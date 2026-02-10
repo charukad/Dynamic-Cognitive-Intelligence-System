@@ -1,0 +1,23 @@
+{
+  "session_id": "mlerq1xko75qbm0vfpk",
+  "created_at": "2026-02-09T14:21:40.340016",
+  "updated_at": "2026-02-09T14:21:40.421440",
+  "messages": [
+    {
+      "id": "mlexnllc4eklgzyfc9s",
+      "sender": "user",
+      "content": "hi",
+      "timestamp": "2026-02-09T14:21:40.340016",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlexnqarh52dvzr2nz",
+      "sender": "agent",
+      "content": " Hello! It's nice to meet you. I'm here to help answer any questions you might have and assist you with various tasks. How can I assist you today?",
+      "timestamp": "2026-02-09T14:21:40.420198",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    }
+  ]
+}

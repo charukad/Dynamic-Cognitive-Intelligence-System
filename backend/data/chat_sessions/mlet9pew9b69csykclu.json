@@ -1,0 +1,71 @@
+{
+  "session_id": "mlet9pew9b69csykclu",
+  "created_at": "2026-02-09T12:19:03.102760",
+  "updated_at": "2026-02-09T14:26:22.098688",
+  "messages": [
+    {
+      "id": "mlet9uptvyn3lumfo9",
+      "sender": "user",
+      "content": "Testing complete sidebar",
+      "timestamp": "2026-02-09T12:19:03.102760",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mleta1kowcw4npr28g",
+      "sender": "agent",
+      "content": " I'm here to help answer questions and provide information to the best of my ability. However, it seems there's a bit more context needed for your statement \"Testing complete sidebar\". Could you please clarify what you mean by \"sidebar\" in this context? Is it a part of a software interface, a physical device, or something else? The more details you can provide, the better I can assist you. If you're referring to a specific task or process related to DCIS, please let me know as well.",
+      "timestamp": "2026-02-09T12:19:03.122037",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mletxykif68ih3ky7v",
+      "sender": "user",
+      "content": "Hello test",
+      "timestamp": "2026-02-09T12:38:25.052885",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mletyxtm080w297l5ia6",
+      "sender": "agent",
+      "content": " Hello! It looks like your last message was just a greeting or a test. If you have any questions or need assistance with something related to DCIS, feel free to ask and I'll do my best to help. If you're just testing the system, then everything seems to be working correctly so far. Is there a specific function or feature you'd like me to check?",
+      "timestamp": "2026-02-09T12:38:25.217924",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlexqasixg7g3bdn7un",
+      "sender": "user",
+      "content": "Testing before new chat",
+      "timestamp": "2026-02-09T14:24:04.590424",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlexqtr1ciklwk5arqg",
+      "sender": "agent",
+      "content": " It appears that you're conducting some tests before starting a new conversation. If you have any specific queries or tasks related to DCIS, please provide the details and I will be happy to help. For instance, if you want me to check the functionality of a particular feature, simply let me know which one and what you expect the outcome to be. Alternatively, if you just need some general information or assistance, I'm here for that as well. Let me know how I can best be of service to you.",
+      "timestamp": "2026-02-09T14:24:04.672455",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlextcz1z349lo9yot",
+      "sender": "user",
+      "content": "Testing before new chat",
+      "timestamp": "2026-02-09T14:26:22.032169",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlextrrvisb5eudlqyb",
+      "sender": "agent",
+      "content": " It appears that you are conducting tests before initiating a new chat. If you require assistance or have any specific queries related to DCIS, please provide the necessary details and I will do my best to help you. For example, if you want me to verify the functionality of a certain feature or process, kindly specify which one and the anticipated outcome. Alternatively, if you are seeking general information or assistance, I am at your service. Please let me know how I can be of help.",
+      "timestamp": "2026-02-09T14:26:22.090871",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    }
+  ]
+}

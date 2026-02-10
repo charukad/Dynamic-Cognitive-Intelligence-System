@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dcis-production
+
+resources:
+  - namespace.yaml
+  - backend-deployment.yaml
+  - vllm-deployment.yaml
+  - neo4j-statefulset.yaml
+  - ingress.yaml
+
+commonLabels:
+  project: dcis
+  managed-by: kustomize
+
+images:
+  - name: ghcr.io/your-org/dcis-backend
+    newTag: latest
+  - name: ghcr.io/your-org/dcis-vllm
+    newTag: latest

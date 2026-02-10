@@ -1,0 +1,204 @@
+"""gVisor sandbox configuration for agent isolation."""
+
+apiVersion: v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gvisor-config
+  namespace: dcis-production
+data:
+  # gVisor runsc configuration
+  runsc.toml: |
+    # Network configuration
+    network = "sandbox"
+    
+    # Disable host network access
+    host-uds = "none"
+    
+    # File access
+    file-access = "exclusive"
+    
+    # Platform
+    platform = "ptrace"
+    
+    # Debug logging
+    debug-log = "/var/log/runsc/"
+    
+    # Resource limits
+    cpu-num = 4
+    total-memory = 8GB
+    
+    # Security
+    rootless = true
+    overlay = true
+
+  # Resource limits per agent
+  agent-limits.yaml: |
+    limits:
+      # CPU limits (millicores)
+      cpu:
+        coder: 2000m      # 2 CPU cores
+        logician: 1000m   # 1 CPU core
+        creative: 1500m   # 1.5 CPU cores
+        scholar: 1000m    # 1 CPU core
+        critic: 500m      # 0.5 CPU cores
+        executive: 1000m  # 1 CPU core
+      
+      # Memory limits
+      memory:
+        coder: 4Gi
+        logician: 2Gi
+        creative: 3Gi
+        scholar: 2Gi
+        critic: 1Gi
+        executive: 2Gi
+      
+      # GPU allocation (if needed)
+      gpu:
+        enabled: false
+        max_allocation: 0.25  # Max 25% of GPU per agent
+      
+      # Network isolation
+      network:
+        internet_access: false
+        allowed_egress:
+          - dcis-backend:8000
+          - vllm-inference:8001
+        
+      # Execution timeouts (seconds)
+      timeout:
+        default: 300      # 5 minutes
+        max: 1800         # 30 minutes
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: isolated-agent-example
+  namespace: dcis-production
+spec:
+  runtimeClassName: gvisor
+  
+  # Security context for pod
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containers:
+  - name: agent-container
+    image: ghcr.io/your-org/dcis-agent:latest
+    
+    # Container security
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+          - ALL
+    
+    # Resource limits
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+    
+    # Environment variables
+    env:
+    - name: AGENT_TYPE
+      value: "coder"
+    - name: MAX_EXECUTION_TIME
+      value: "300"
+    - name: SANDBOX_MODE
+      value: "true"
+    
+    # Volume mounts (read-only where possible)
+    volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+    - name: agent-config
+      mountPath: /config
+      readOnly: true
+  
+  volumes:
+  - name: tmp
+    emptyDir:
+      sizeLimit: 1Gi
+  - name: agent-config
+    configMap:
+      name: gvisor-config
+  
+  # Network policy isolation
+  networkPolicy:
+    egress:
+    - to:
+      - podSelector:
+          matchLabels:
+            app: dcis-backend
+      ports:
+      - protocol: TCP
+        port: 8000
+    - to:
+      - podSelector:
+          matchLabels:
+            app: vllm
+      ports:
+      - protocol: TCP
+        port: 8001
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-network-isolation
+  namespace: dcis-production
+spec:
+  podSelector:
+    matchLabels:
+      component: agent
+  
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Only allow connections from backend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: dcis-backend
+  
+  # Only allow connections to backend and inference
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: dcis-backend
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: vllm
+    ports:
+    - protocol: TCP
+      port: 8001
+  # DNS resolution
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53

@@ -1,0 +1,58 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Kustomize overlay for development environment
+
+namespace: dcis-dev
+
+# Reference base manifests
+bases:
+  - ../../base
+
+# Common labels for all resources
+commonLabels:
+  environment: development
+  managed-by: kustomize
+
+# Name prefix
+namePrefix: dev-
+
+# Resource patches for development
+patchesStrategicMerge:
+  - deployment-patch.yaml
+  - ingress-patch.yaml
+
+# ConfigMaps for dev environment
+configMapGenerator:
+  - name: dcis-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - ENABLE_DEBUG=true
+
+# Secrets for dev (use sealed secrets in prod)
+secretGenerator:
+  - name: dcis-secrets
+    literals:
+      - DATABASE_URL=postgresql://dcis:dev_password@postgres:5432/dcis_dev
+      - NEO4J_PASSWORD=dev_neo4j_pass
+      - REDIS_PASSWORD=dev_redis_pass
+      - JWT_SECRET=dev_jwt_secret_key_change_in_prod
+      - CHROMA_AUTH_TOKEN=dev_chroma_token
+
+# Replica counts for dev
+replicas:
+  - name: backend-deployment
+    count: 1
+  - name: vllm-deployment  
+    count: 1
+
+# Images - use dev tags
+images:
+  - name: ghcr.io/your-org/dcis-backend
+    newTag: dev-latest
+  - name: ghcr.io/your-org/dcis-frontend
+    newTag: dev-latest
+  - name: ghcr.io/your-org/dcis-vllm
+    newTag: dev-latest

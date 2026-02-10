@@ -1,0 +1,332 @@
+/* GAIA Arena Styles */
+
+.gaia-arena {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.arena-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.arena-header h2 {
+    font-size: 32px;
+    margin: 0 0 8px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.arena-subtitle {
+    font-size: 14px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* 3D Canvas */
+
+.arena-canvas-container {
+    width: 100%;
+    height: 500px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Match Controls */
+
+.match-controls {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.agent-selector {
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(102, 126, 234, 0.5);
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.agent-selector:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.start-match-btn {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.start-match-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.start-match-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Active Match Display */
+
+.active-match-display {
+    margin: 24px 0;
+}
+
+.match-card {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.match-header {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending {
+    background: rgba(255, 167, 38, 0.2);
+    color: #ffa726;
+    border: 1px solid #ffa726;
+}
+
+.status-in_progress {
+    background: rgba(100, 181, 246, 0.2);
+    color: #64b5f6;
+    border: 1px solid #64b5f6;
+    animation: pulse-status 2s infinite;
+}
+
+.status-completed {
+    background: rgba(102, 187, 106, 0.2);
+    color: #66bb6a;
+    border: 1px solid #66bb6a;
+}
+
+/* Scoreboard */
+
+.match-scoreboard {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 20px;
+}
+
+.score-item {
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.score-item.winning {
+    transform: scale(1.1);
+}
+
+.score-name {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.score-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.score-item.winning .score-value {
+    color: #66bb6a;
+    text-shadow: 0 0 20px rgba(102, 187, 106, 0.6);
+}
+
+.score-divider {
+    font-size: 32px;
+    color: #444;
+}
+
+/* Progress */
+
+.match-progress {
+    margin-top: 20px;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.5s ease;
+}
+
+.progress-label {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Leaderboard */
+
+.leaderboard-section {
+    margin-top: 32px;
+}
+
+.leaderboard-section h3 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: white;
+    text-align: center;
+}
+
+.leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leaderboard-entry {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 200px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.leaderboard-entry:hover {
+    background: rgba(0, 0, 0, 0.6);
+    border-color: #667eea;
+    transform: translateX(4px);
+}
+
+.rank {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #1a1a1a;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+    color: #1a1a1a;
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #cd7f32, #daa520);
+    color: #1a1a1a;
+}
+
+.agent-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+}
+
+.elo-rating {
+    font-size: 18px;
+    font-weight: 700;
+    color: #667eea;
+    text-align: right;
+}
+
+.elo-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.elo-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.5s ease;
+}
+
+/* Empty States */
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 14px;
+}
+
+/* Animations */
+
+@keyframes pulse-status {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes pulse-score {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}

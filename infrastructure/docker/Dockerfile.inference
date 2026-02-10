@@ -1,0 +1,60 @@
+# vLLM Inference Server Dockerfile
+# Optimized for NVIDIA GPUs with CUDA support
+
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    CUDA_HOME=/usr/local/cuda \
+    PATH=/usr/local/cuda/bin:$PATH \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir \
+    vllm==0.3.0 \
+    transformers==4.36.0 \
+    torch==2.1.0 \
+    fastapi==0.109.0 \
+    uvicorn==0.27.0 \
+    pydantic==2.5.0 \
+    httpx==0.26.0
+
+# Create app directory
+WORKDIR /app
+
+# Copy model configuration
+COPY models.yaml /app/config/models.yaml
+
+# Create model cache directory
+RUN mkdir -p /models
+
+# Set model cache directory
+ENV HF_HOME=/models \
+    TRANSFORMERS_CACHE=/models
+
+# Expose vLLM API port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Default command (override with docker-compose)
+CMD ["python3", "-m", "vllm.entrypoints.openai.api_server", \
+    "--host", "0.0.0.0", \
+    "--port", "8001", \
+    "--model", "/models/deepseek-coder-6.7b-instruct", \
+    "--tensor-parallel-size", "1", \
+    "--dtype", "float16", \
+    "--max-model-len", "4096", \
+    "--gpu-memory-utilization", "0.90"]

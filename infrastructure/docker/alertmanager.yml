@@ -1,0 +1,117 @@
+# Alertmanager Configuration for DCIS
+
+global:
+  # SMTP configuration for email alerts (optional)
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'dcis-alerts@example.com'
+  smtp_auth_username: 'your-email@gmail.com'
+  smtp_auth_password: 'your-app-password'
+
+# Define alert routing
+route:
+  # Default receiver for all alerts
+  receiver: 'slack-notifications'
+  
+  # Group alerts by cluster and alertname
+  group_by: ['alertname', 'cluster', 'service']
+  
+  # Wait 30s before sending initial notification
+  group_wait: 30s
+  
+  # Wait 5m before sending updates for same group
+  group_interval: 5m
+  
+  # Wait 4h before re-sending resolved alerts
+  repeat_interval: 4h
+
+  # Route specific alerts to different receivers
+  routes:
+    # Critical alerts go to PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty'
+      continue: true  # Also send to Slack
+    
+    # High severity to Slack with @channel mention
+    - match:
+        severity: high
+      receiver: 'slack-urgent'
+    
+    # Warning and info to regular Slack
+    - match_re:
+        severity: ^(warning|info)$
+      receiver: 'slack-notifications'
+
+# Define receivers (notification channels)
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#dcis-alerts'
+        title: 'DCIS Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+          *Details:*
+          {{ range .Alerts }}
+            • *Instance:* {{ .Labels.instance }}
+            • *Value:* {{ .Annotations.value }}
+          {{ end }}
+        send_resolved: true
+
+  - name: 'slack-urgent'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#dcis-urgent'
+        title: '🚨 URGENT: {{ .GroupLabels.alertname }}'
+        text: |
+          @channel
+          *URGENT ALERT*
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+        send_resolved: true
+
+  - name: 'pagerduty'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        description: '{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+        severity: '{{ .CommonLabels.severity }}'
+        client: 'DCIS Alertmanager'
+        client_url: 'http://localhost:9093'
+
+  - name: 'email'
+    email_configs:
+      - to: 'team@example.com'
+        from: 'dcis-alerts@example.com'
+        headers:
+          Subject: '[DCIS] {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>DCIS Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
+          <p><strong>Summary:</strong> {{ .CommonAnnotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .CommonAnnotations.description }}</p>
+          <h3>Affected Instances:</h3>
+          <ul>
+          {{ range .Alerts }}
+            <li>{{ .Labels.instance }} - {{ .Annotations.value }}</li>
+          {{ end }}
+          </ul>
+
+# Inhibition rules - suppress alerts when others are firing
+inhibit_rules:
+  # Suppress warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+  
+  # Suppress info alerts if warning or critical is firing
+  - source_match_re:
+      severity: '^(critical|warning)$'
+    target_match:
+      severity: 'info'
+    equal: ['alertname', 'instance']

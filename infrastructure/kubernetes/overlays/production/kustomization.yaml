@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay
+
+namespace: dcis-production
+
+bases:
+  - ../../base
+
+commonLabels:
+  environment: production
+  managed-by: kustomize
+
+# ConfigMaps for production
+configMapGenerator:
+  - name: dcis-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - ENABLE_DEBUG=false
+      - RATE_LIMIT_ENABLED=true
+      - MAX_REQUESTS_PER_MINUTE=100
+
+# Secrets reference (use external secret management in real prod)
+secretGenerator:
+  - name: dcis-secrets
+    envs:
+      - secrets.env
+
+# Production replica counts
+replicas:
+  - name: backend-deployment
+    count: 3
+  - name: vllm-deployment
+    count: 2
+  - name: chromadb-deployment
+    count: 3
+
+# Production images with specific tags
+images:
+  - name: ghcr.io/your-org/dcis-backend
+    newTag: "v1.0.0"
+  - name: ghcr.io/your-org/dcis-frontend
+    newTag: "v1.0.0"
+  - name: ghcr.io/your-org/dcis-vllm
+    newTag: "v1.0.0"
+
+# Strategic merge patches
+patchesStrategicMerge:
+  - deployment-patch.yaml
+  - ingress-patch.yaml
+  - hpa.yaml
+
+# Pod disruption budgets
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: backend-deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: dcis-backend
+                topologyKey: kubernetes.io/hostname

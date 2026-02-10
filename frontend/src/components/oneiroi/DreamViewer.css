@@ -1,0 +1,333 @@
+/* Dream Viewer Styles */
+
+.dream-viewer {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.dream-viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.dream-viewer-header h2 {
+    font-size: 28px;
+    margin: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.agent-badge {
+    padding: 8px 16px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid #667eea;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #667eea;
+}
+
+/* Dream Cycle Card */
+
+.dream-cycle-card {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.phase-indicator {
+    margin-bottom: 20px;
+}
+
+.phase-timeline {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.phase-timeline::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    z-index: 0;
+}
+
+.phase-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.phase-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.phase-step.active .phase-dot {
+    background: #64b5f6;
+    border-color: #64b5f6;
+    box-shadow: 0 0 20px rgba(100, 181, 246, 0.6);
+    animation: pulse 2s infinite;
+}
+
+.phase-step.completed .phase-dot {
+    background: #66bb6a;
+    border-color: #66bb6a;
+}
+
+.phase-name {
+    font-size: 12px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.phase-step.active .phase-name {
+    color: #64b5f6;
+    font-weight: 600;
+}
+
+.current-phase {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+/* Progress Bar */
+
+.progress-container {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.progress-label {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: white;
+    font-weight: 600;
+}
+
+/* Stats */
+
+.dream-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.status-running {
+    color: #64b5f6;
+}
+
+.status-completed {
+    color: #66bb6a;
+}
+
+.status-failed {
+    color: #ef5350;
+}
+
+/* Dream Actions */
+
+.dream-actions {
+    text-align: center;
+    margin: 40px 0;
+}
+
+.initiate-dream-btn {
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.initiate-dream-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Insights Section */
+
+.insights-section {
+    margin-top: 32px;
+}
+
+.insights-section h3 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: white;
+}
+
+.insight-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.insight-card {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 16px;
+    border-left: 4px solid #64b5f6;
+    transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: translateX(4px);
+}
+
+.insight-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.insight-icon {
+    font-size: 20px;
+}
+
+.insight-type {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.insight-confidence {
+    margin-left: auto;
+    font-size: 12px;
+    color: #888;
+}
+
+.insight-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #ddd;
+    margin-bottom: 12px;
+}
+
+.insight-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: #888;
+}
+
+.insight-impact strong {
+    color: #66bb6a;
+}
+
+.apply-btn {
+    margin-left: auto;
+    padding: 4px 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.apply-btn:hover {
+    background: #764ba2;
+}
+
+/* Performance Section */
+
+.performance-section {
+    margin-top: 32px;
+}
+
+.performance-section h3 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: white;
+}
+
+/* Loading/Empty States */
+
+.dream-viewer-loading,
+.no-insights,
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+}
+
+.loader {
+    margin: 0 auto 16px;
+}
+
+/* Animations */
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}

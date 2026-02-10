@@ -1,0 +1,275 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: dcis-staging-cluster
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+
+jobs:
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Bandit (Python Security)
+        run: |
+          pip install bandit
+          bandit -r dcis/backend/src/ -f json -o bandit-report.json || true
+
+      - name: Run npm audit (Frontend)
+        working-directory: dcis/frontend
+        run: |
+          npm audit --json > npm-audit-report.json || true
+
+      - name: Run Trivy (Container Scanning)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            npm-audit-report.json
+            trivy-results.sarif
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: security-scan
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: dcis
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: dcis_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install backend dependencies
+        working-directory: dcis/backend
+        run: |
+          poetry install --no-root
+
+      - name: Run backend tests
+        working-directory: dcis/backend
+        env:
+          DATABASE_URL: postgresql://dcis:test_password@localhost:5432/dcis_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          poetry run pytest tests/ -v --cov=src --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: dcis/backend/coverage.xml
+          flags: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: dcis/frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: dcis/frontend
+        run: npm test
+
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/dcis-backend:$IMAGE_TAG -t $ECR_REGISTRY/dcis-backend:staging-latest -f dcis/backend/Dockerfile dcis/backend
+          docker push $ECR_REGISTRY/dcis-backend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/dcis-backend:staging-latest
+
+      - name: Build, tag, and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/dcis-frontend:$IMAGE_TAG -t $ECR_REGISTRY/dcis-frontend:staging-latest -f dcis/frontend/Dockerfile dcis/frontend
+          docker push $ECR_REGISTRY/dcis-frontend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/dcis-frontend:staging-latest
+
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Deploy to EKS with Kustomize
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd dcis/infrastructure/kubernetes/overlays/staging
+          
+          # Update image tags
+          kustomize edit set image \
+            ghcr.io/your-org/dcis-backend=$ECR_REGISTRY/dcis-backend:$IMAGE_TAG \
+            ghcr.io/your-org/dcis-frontend=$ECR_REGISTRY/dcis-frontend:$IMAGE_TAG
+          
+          # Apply manifests
+          kustomize build . | kubectl apply -f -
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment/backend-deployment -n dcis-staging --timeout=10m
+          kubectl rollout status deployment/frontend-deployment -n dcis-staging --timeout=10m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n dcis-staging
+          kubectl get svc -n dcis-staging
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Get service endpoint
+        id: get-endpoint
+        run: |
+          ENDPOINT=$(kubectl get ingress dcis-ingress -n dcis-staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Health check
+        run: |
+          curl --fail --retry 5 --retry-delay 10 https://${{ steps.get-endpoint.outputs.endpoint }}/health
+
+      - name: API smoke test
+        run: |
+          response=$(curl -s https://${{ steps.get-endpoint.outputs.endpoint }}/api/v1/health)
+          echo $response | jq -e '.status == "healthy"'
+
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy, smoke-test]
+    if: always()
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to staging: ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()

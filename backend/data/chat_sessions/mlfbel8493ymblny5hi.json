@@ -1,0 +1,55 @@
+{
+  "session_id": "mlfbel8493ymblny5hi",
+  "created_at": "2026-02-09T20:46:38.102868",
+  "updated_at": "2026-02-10T15:38:53.764930",
+  "messages": [
+    {
+      "id": "mlfbepz9w2ok82ujoi8",
+      "sender": "user",
+      "content": "what is my name ",
+      "timestamp": "2026-02-09T20:46:38.102868",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlfbessz81j52zstit5",
+      "sender": "agent",
+      "content": " I'm an advanced AI named DCIS, and I don't have the ability to know your name directly. However, if you provide me with that information, I can certainly store it for future reference and use it in our interactions. Alternatively, you can call me Assistant. How may I assist you today?",
+      "timestamp": "2026-02-09T20:46:38.123230",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlfbf4klpza9jngmmz",
+      "sender": "user",
+      "content": "my name is kumara",
+      "timestamp": "2026-02-09T20:46:55.563011",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlfbf69zj76iz1m8y6b",
+      "sender": "agent",
+      "content": " Hello Kumara! It's nice to meet you. I'll remember that for future interactions. How can I help you today?",
+      "timestamp": "2026-02-09T20:46:55.582341",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlgfusk4ecrf23qj1de",
+      "sender": "user",
+      "content": "what is my name ",
+      "timestamp": "2026-02-10T15:38:53.742761",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    },
+    {
+      "id": "mlgfuw9ter7tbn2694v",
+      "sender": "agent",
+      "content": " I believe your name is Kumara, as that is the name you provided me earlier. Is there something specific you would like assistance with?",
+      "timestamp": "2026-02-10T15:38:53.764459",
+      "agent_id": "data-analyst",
+      "agent_name": "Data Analyst Agent"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chromadb
+  namespace: dcis-production
+  labels:
+    app: chromadb
+    component: vectordb
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chromadb
+  template:
+    metadata:
+      labels:
+        app: chromadb
+        component: vectordb
+    spec:
+      containers:
+      - name: chromadb
+        image: chromadb/chroma:0.4.22
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: CHROMA_SERVER_AUTH_PROVIDER
+          value: "chromadb.auth.token.TokenAuthServerProvider"
+        - name: CHROMA_SERVER_AUTH_CREDENTIALS
+          valueFrom:
+            secretKeyRef:
+              name: dcis-secrets
+              key: CHROMA_AUTH_TOKEN
+        - name: PERSIST_DIRECTORY
+          value: "/chroma/chroma"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: chroma-data
+          mountPath: /chroma/chroma
+        livenessProbe:
+          httpGet:
+            path: /api/v1/heartbeat
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/heartbeat
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: chroma-data
+        persistentVolumeClaim:
+          claimName: chromadb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chromadb-service
+  namespace: dcis-production
+spec:
+  selector:
+    app: chromadb
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chromadb-pvc
+  namespace: dcis-production
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: fast-ssd

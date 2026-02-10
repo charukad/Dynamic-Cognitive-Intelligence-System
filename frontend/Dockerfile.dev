@@ -1,0 +1,23 @@
+# Dockerfile.dev
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies (ensure lock files are copied)
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
+
+# Install packages
+RUN if [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm install; \
+    elif [ -f package-lock.json ]; then npm install; \
+    else echo "No lockfile found" && exit 1; \
+    fi
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+CMD ["npm", "run", "dev"]
