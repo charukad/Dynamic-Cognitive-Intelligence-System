@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * AgentModal Component
  * 
@@ -30,6 +32,14 @@ interface AgentModalProps {
     agentId?: string;
     initialData?: Partial<AgentFormData>;
 }
+
+type APIErrorLike = {
+    response?: {
+        data?: {
+            detail?: string;
+        };
+    };
+};
 
 // ============================================================================
 // AgentModal Component
@@ -65,10 +75,11 @@ export function AgentModal({
 
             // Close modal
             onOpenChange(false);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to save agent:', error);
+            const detail = (error as APIErrorLike).response?.data?.detail;
             toast.error(
-                error.response?.data?.detail ||
+                detail ||
                 `Failed to ${isEditMode ? 'update' : 'create'} agent`
             );
         } finally {

@@ -1,6 +1,5 @@
 import { Navigation } from "@/components/navigation";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { MobileWarning } from "@/components/mobile-warning";
 
 export default function MainLayout({
     children,
@@ -8,14 +7,13 @@ export default function MainLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex flex-col h-screen overflow-hidden">
             <Navigation />
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto pt-14">
                 <ErrorBoundary>
                     {children}
                 </ErrorBoundary>
             </main>
-            <MobileWarning />
         </div>
     );
 }

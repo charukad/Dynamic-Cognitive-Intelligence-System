@@ -1,6 +1,6 @@
-# Dockerfile.dev
+# Dockerfile.dev - Frontend Development
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package.json package-lock.json* pnpm-lock.yaml* ./
 
 # Install packages
-RUN if [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm install; \
-    elif [ -f package-lock.json ]; then npm install; \
+RUN if [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm config set fetch-retries 5 && pnpm config set fetch-retry-maxtimeout 1200000 && pnpm config set fetch-timeout 1200000 && pnpm install; \
+    elif [ -f package-lock.json ]; then npm install --fetch-timeout=1000000 --fetch-retries=5; \
     else echo "No lockfile found" && exit 1; \
     fi
 

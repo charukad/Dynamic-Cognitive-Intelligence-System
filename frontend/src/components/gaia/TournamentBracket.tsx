@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Tournament Bracket Visualization
  * 
@@ -10,18 +12,19 @@
  * - Export to PNG/PDF
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ZoomIn,
     ZoomOut,
     Download,
-    Maximize2,
     Trophy,
     Clock,
-    Users
 } from 'lucide-react';
 import './TournamentBracket.css';
+import { apiPath, wsUrl } from '@/lib/runtime';
 
 // ============================================================================
 // Types
@@ -59,37 +62,10 @@ export function TournamentBracket({ tournamentId }: { tournamentId: string }) {
     const [tournament, setTournament] = useState<Tournament | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
     const [zoom, setZoom] = useState(1);
-    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const pan = { x: 0, y: 0 };
     const svgRef = useRef<SVGSVGElement>(null);
 
-    // Fetch tournament data
-    useEffect(() => {
-        fetchTournament();
-
-        // WebSocket for real-time updates
-        const ws = new WebSocket(`ws://localhost:8008/ws/tournaments/${tournamentId}`);
-
-        ws.onmessage = (event) => {
-            const update = JSON.parse(event.data);
-            if (update.type === 'match_update') {
-                updateMatch(update.match);
-            }
-        };
-
-        return () => ws.close();
-    }, [tournamentId]);
-
-    const fetchTournament = async () => {
-        try {
-            const response = await fetch(`/api/v1/gaia/tournament/${tournamentId}`);
-            const data = await response.json();
-            setTournament(data);
-        } catch (error) {
-            console.error('Failed to fetch tournament:', error);
-        }
-    };
-
-    const updateMatch = (match: Match) => {
+    const updateMatch = useCallback((match: Match) => {
         setTournament(prev => {
             if (!prev) return prev;
 
@@ -99,7 +75,39 @@ export function TournamentBracket({ tournamentId }: { tournamentId: string }) {
 
             return { ...prev, rounds: newRounds };
         });
-    };
+    }, []);
+
+    const fetchTournament = useCallback(async () => {
+        try {
+            const response = await fetch(apiPath(`/v1/gaia/tournament/${tournamentId}`));
+            const data = await response.json();
+            setTournament(data);
+        } catch (error) {
+            console.error('Failed to fetch tournament:', error);
+        }
+    }, [tournamentId]);
+
+    // Fetch tournament data
+    useEffect(() => {
+        const initTimer = setTimeout(() => {
+            void fetchTournament();
+        }, 0);
+
+        // WebSocket for real-time updates
+        const ws = new WebSocket(wsUrl(`/ws/tournaments/${tournamentId}`));
+
+        ws.onmessage = (event) => {
+            const update = JSON.parse(event.data) as { type?: string; match?: Match };
+            if (update.type === 'match_update' && update.match) {
+                updateMatch(update.match);
+            }
+        };
+
+        return () => {
+            clearTimeout(initTimer);
+            ws.close();
+        };
+    }, [tournamentId, fetchTournament, updateMatch]);
 
     const handleZoom = (delta: number) => {
         setZoom(prev => Math.max(0.5, Math.min(2, prev + delta)));
@@ -242,7 +250,7 @@ interface BracketProps {
     tournament: Tournament;
     zoom: number;
     pan: { x: number; y: number };
-    svgRef: React.RefObject<SVGSVGElement>;
+    svgRef: React.RefObject<SVGSVGElement | null>;
     onMatchClick: (match: Match) => void;
 }
 
@@ -318,7 +326,7 @@ function EliminationBracket({ tournament, zoom, pan, svgRef, onMatchClick }: Bra
                                             x1={roundX + MATCH_WIDTH}
                                             y1={matchY + MATCH_HEIGHT / 2}
                                             x2={roundX + ROUND_SPACING}
-                                            y2={calculateNextMatchY(roundIdx, matchIdx, tournament.rounds, MATCH_SPACING, svgHeight, roundStartY)}
+                                            y2={calculateNextMatchY(roundIdx, matchIdx, tournament.rounds, MATCH_SPACING, svgHeight)}
                                             animated={match.status === 'in_progress'}
                                         />
                                     )}
@@ -593,8 +601,7 @@ function calculateNextMatchY(
     matchIdx: number,
     rounds: Match[][],
     spacing: number,
-    svgHeight: number,
-    startY: number
+    svgHeight: number
 ): number {
     const nextRound = rounds[roundIdx + 1];
     if (!nextRound) return 0;

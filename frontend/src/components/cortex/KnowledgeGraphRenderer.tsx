@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Knowledge Graph Renderer - 3D Visualization
  * 
@@ -12,8 +14,10 @@
  * - Performance optimization (LOD, culling)
  */
 
+'use client';
+
 import { useRef, useMemo, useState, useEffect } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Text } from '@react-three/drei';
 import { ForceSimulation, GraphNode, GraphEdge, ClusterLayout } from './ForceSimulation';
@@ -142,34 +146,32 @@ function GraphEdgeLine({
     sourceNode: GraphNode;
     targetNode: GraphNode;
 }) {
-    const lineRef = useRef<THREE.Line>(null);
-
-    const points = useMemo(() => {
-        return [sourceNode.position, targetNode.position];
+    const geometry = useMemo(() => {
+        const geom = new THREE.BufferGeometry();
+        const positions = new Float32Array(6);
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        return geom;
     }, []);
 
-    const geometry = useMemo(() => {
-        const geom = new THREE.BufferGeometry().setFromPoints(points);
-        return geom;
-    }, [points]);
-
     useFrame(() => {
-        if (lineRef.current && geometry) {
-            // Update line positions from simulation
-            const positions = new Float32Array([
-                sourceNode.position.x, sourceNode.position.y, sourceNode.position.z,
-                targetNode.position.x, targetNode.position.y, targetNode.position.z,
-            ]);
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.attributes.position.needsUpdate = true;
-        }
+        // Update line positions from simulation
+        geometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(
+                new Float32Array([
+                    sourceNode.position.x, sourceNode.position.y, sourceNode.position.z,
+                    targetNode.position.x, targetNode.position.y, targetNode.position.z,
+                ]),
+                3
+            )
+        );
     });
 
     const opacity = Math.min(edge.weight, 1.0);
     const lineWidth = EDGE_WIDTH * edge.weight;
 
     return (
-        <line ref={lineRef} geometry={geometry}>
+        <line geometry={geometry}>
             <lineBasicMaterial
                 color={0x64b5f6}
                 opacity={opacity * 0.3}
@@ -193,9 +195,6 @@ export function KnowledgeGraphRenderer({
     const groupRef = useRef<THREE.Group>(null);
     const simulationRef = useRef<ForceSimulation | null>(null);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-
-    const { camera } = useThree();
 
     // ============================================================================
     // Initialize Simulation
@@ -242,14 +241,9 @@ export function KnowledgeGraphRenderer({
     const handleNodeClick = (node: GraphNode) => {
         setSelectedNodeId(node.id);
         onNodeClick?.(node);
-
-        // Zoom to node
-        const targetPosition = node.position.clone().add(new THREE.Vector3(0, 5, 10));
-        // In production, animate camera to targetPosition
     };
 
     const handleNodeHover = (node: GraphNode | null) => {
-        setHoveredNodeId(node?.id || null);
         onNodeHover?.(node);
     };
 
@@ -295,22 +289,10 @@ export function KnowledgeGraphRenderer({
 // ============================================================================
 
 export function GraphStats({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] }) {
-    const avgDegree = (edges.length * 2) / nodes.length;
+    const avgDegree = nodes.length > 0 ? (edges.length * 2) / nodes.length : 0;
 
     return (
-        <div
-            style={{
-                position: 'absolute',
-                top: 20,
-                left: 20,
-                background: 'rgba(0,0,0,0.7)',
-                color: 'white',
-                padding: '10px 15px',
-                borderRadius: 8,
-                fontFamily: 'monospace',
-                fontSize: 12,
-            }}
-        >
+        <div className="absolute left-3 top-3 z-10 rounded-xl border border-fuchsia-400/25 bg-slate-950/88 px-3.5 py-2.5 font-mono text-xs text-slate-100 shadow-lg backdrop-blur-md md:left-4 md:top-4">
             <div>Nodes: {nodes.length}</div>
             <div>Edges: {edges.length}</div>
             <div>Avg Degree: {avgDegree.toFixed(2)}</div>

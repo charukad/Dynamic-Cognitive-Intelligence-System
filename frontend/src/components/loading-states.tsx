@@ -1,8 +1,15 @@
+'use client';
+
 "use client";
 
 import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
+
+function deterministicNoise(index: number, salt: number): number {
+    const value = Math.sin((index + 1) * (12.9898 + salt)) * 43758.5453;
+    return value - Math.floor(value);
+}
 
 export function LoadingSpinner() {
     return (
@@ -99,13 +106,13 @@ export function ChatSkeleton() {
 }
 
 export function OrbitSkeleton() {
-    // Generate particle positions once using useMemo to avoid purity violations
+    // Deterministic particles avoid runtime impurity warnings while keeping a varied layout
     const randomizedParticles = useMemo(() =>
         Array.from({ length: 20 }, (_, i): { id: number; left: number; top: number; delay: number } => ({
             id: i,
-            left: Math.random() * 100,
-            top: Math.random() * 100,
-            delay: Math.random() * 2,
+            left: deterministicNoise(i, 0.31) * 100,
+            top: deterministicNoise(i, 0.73) * 100,
+            delay: deterministicNoise(i, 1.17) * 2,
         }))
         , []);
 

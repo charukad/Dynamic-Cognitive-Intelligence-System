@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * GAIA Arena - 3D Match Visualization
  * 
@@ -9,11 +11,14 @@
  * - Tournament brackets
  */
 
-import { useState, useEffect, useRef } from 'react';
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, Sphere, Box } from '@react-three/drei';
+import { OrbitControls, Text, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import './GAIAArena.css';
+import { apiPath } from '@/lib/runtime';
 
 // ============================================================================
 // Types
@@ -45,25 +50,30 @@ export function GAIAArena() {
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [selectedAgent, setSelectedAgent] = useState<string>('agent_1');
 
-    useEffect(() => {
-        fetchLeaderboard();
-        const interval = setInterval(fetchLeaderboard, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchLeaderboard = async () => {
+    const fetchLeaderboard = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:8008/api/v1/gaia/leaderboard/general');
+            const res = await fetch(apiPath('/v1/gaia/leaderboard/general'));
             const data = await res.json();
             setLeaderboard(data);
         } catch (error) {
             console.error('Failed to fetch leaderboard:', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initTimer = setTimeout(() => {
+            void fetchLeaderboard();
+        }, 0);
+        const interval = setInterval(fetchLeaderboard, 5000);
+        return () => {
+            clearTimeout(initTimer);
+            clearInterval(interval);
+        };
+    }, [fetchLeaderboard]);
 
     const handleCreateMatch = async () => {
         try {
-            const res = await fetch('http://localhost:8008/api/v1/gaia/match/create', {
+            const res = await fetch(apiPath('/v1/gaia/match/create'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -73,7 +83,16 @@ export function GAIAArena() {
                 })
             });
             const data = await res.json();
-            setActiveMatch(data.match_id);
+            setActiveMatch({
+                match_id: data.match_id,
+                status: 'pending',
+                current_round: 0,
+                total_rounds: 0,
+                agent_score: 0,
+                opponent_score: 0,
+                agent_name: selectedAgent,
+                opponent_name: 'Synthetic Opponent',
+            });
         } catch (error) {
             console.error('Failed to create match:', error);
         }
@@ -84,7 +103,7 @@ export function GAIAArena() {
 
         const pollMatch = async () => {
             try {
-                const res = await fetch(`http://localhost:8008/api/v1/gaia/match/${activeMatch}`);
+                const res = await fetch(apiPath(`/v1/gaia/match/${activeMatch.match_id}`));
                 const matchData = await res.json();
 
                 setActiveMatch({
@@ -105,8 +124,8 @@ export function GAIAArena() {
             }
         };
 
-        pollMatch();
-    }, [activeMatch, selectedAgent]);
+        void pollMatch();
+    }, [activeMatch, selectedAgent, fetchLeaderboard]);
 
     return (
         <div className="gaia-arena">

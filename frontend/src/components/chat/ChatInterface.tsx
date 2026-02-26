@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Real-time Chat Interface
  * 
@@ -20,11 +22,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { saveMessageToHistory } from '@/lib/chatHistory';
 import ChatHistorySidebar from './ChatHistorySidebar';
+import { apiPath, wsUrl } from '@/lib/runtime';
 import {
     Send,
     Bot,
-    User as UserIcon,
-    Loader2,
     Check,
     CheckCheck,
     Clock,
@@ -59,11 +60,26 @@ interface Agent {
     avatar_color: string;
 }
 
+interface RawChatMessage {
+    id: string;
+    sender: 'user' | 'agent';
+    agent_id?: string;
+    agent_name?: string;
+    content: string;
+    timestamp: string;
+}
+
+interface RawAgent {
+    id: string;
+    name: string;
+    description: string;
+}
+
 // ============================================================================
 // Chat Interface Component
 // ============================================================================
 
-export function ChatInterface() {
+export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -78,13 +94,13 @@ export function ChatInterface() {
     // Initialize WebSocket and load data
     useEffect(() => {
         fetchAgents();
-        loadChatHistory();  // Load previous messages
-        initializeWebSocket();
+        loadChatHistory();
+        const websocket = initializeWebSocket();
 
         return () => {
-            ws?.close();
+            websocket?.close();
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadChatHistory = async () => {
         try {
@@ -93,23 +109,19 @@ export function ChatInterface() {
             if (!sessionId) {
                 sessionId = generateId();
                 localStorage.setItem('chat_session_id', sessionId);
-                console.log('🆕 Created new session:', sessionId);
-            } else {
-                console.log('📂 Loading session:', sessionId);
             }
 
             setCurrentSessionId(sessionId);
 
             // Fetch chat history from API
-            const response = await fetch(`http://localhost:8008/api/v1/chat/history/${sessionId}`);
+            const response = await fetch(apiPath(`/v1/chat/history/${sessionId}`));
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('📜 Loaded chat history:', data);
 
-                if (data.messages && data.messages.length > 0) {
+                if (Array.isArray(data.messages) && data.messages.length > 0) {
                     // Convert to Message format
-                    const loadedMessages: Message[] = data.messages.map((msg: any) => ({
+                    const loadedMessages: Message[] = (data.messages as RawChatMessage[]).map((msg) => ({
                         id: msg.id,
                         sender: msg.sender,  // 'user' or 'agent'
                         agent_id: msg.agent_id,
@@ -120,40 +132,56 @@ export function ChatInterface() {
                     }));
 
                     setMessages(loadedMessages);
-                    console.log(`✅ Restored ${loadedMessages.length} messages`);
                 }
             }
         } catch (error) {
-            console.error('❌ Failed to load chat history:', error);
+            console.error('Failed to load chat history:', error);
         }
     };
 
-    const initializeWebSocket = () => {
-        // Backend is running on port 8008
-        const websocket = new WebSocket('ws://localhost:8008/ws/ai-services');
+    const initializeWebSocket = (): WebSocket => {
+        const websocket = new WebSocket(wsUrl('/ws/ai-services'));
 
         websocket.onopen = () => {
             console.log('WebSocket connected');
         };
 
         websocket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+            const payload = JSON.parse(event.data) as {
+                type?: string;
+                id?: string;
+                agent_id?: string;
+                agent_name?: string;
+                content?: string;
+                timestamp?: string;
+                message_id?: string;
+                chunk?: string;
+                is_typing?: boolean;
+                data?: {
+                    is_typing?: boolean;
+                    message?: string;
+                };
+            };
+            const data = payload.data ?? {};
 
-            if (data.type === 'message') {
+            if (payload.type === 'message') {
                 addMessage({
-                    id: data.id,
+                    id: payload.id || generateId(),
                     sender: 'agent',
-                    agent_id: data.agent_id,
-                    agent_name: data.agent_name,
-                    content: data.content,
-                    timestamp: new Date(data.timestamp),
+                    agent_id: payload.agent_id,
+                    agent_name: payload.agent_name,
+                    content: payload.content || '',
+                    timestamp: new Date(payload.timestamp || Date.now()),
                     status: 'delivered'
                 });
                 setIsTyping(false);
-            } else if (data.type === 'typing') {
-                setIsTyping(data.is_typing);
-            } else if (data.type === 'stream_chunk') {
-                updateStreamingMessage(data.message_id, data.chunk);
+            } else if (payload.type === 'typing') {
+                setIsTyping(Boolean(data.is_typing ?? payload.is_typing));
+            } else if (payload.type === 'stream_chunk' && payload.message_id && payload.chunk) {
+                updateStreamingMessage(payload.message_id, payload.chunk);
+            } else if (payload.type === 'error') {
+                console.error('WebSocket chat error:', data.message || 'Unknown WebSocket error');
+                setIsTyping(false);
             }
         };
 
@@ -162,34 +190,29 @@ export function ChatInterface() {
         };
 
         setWs(websocket);
+        return websocket;
     };
 
     const fetchAgents = async () => {
         try {
-            // Fixed: Use /api/v1/agents (without trailing slash)
-            const response = await fetch('http://localhost:8008/api/v1/agents');
+            const response = await fetch(apiPath('/v1/agents'));
             const data = await response.json();
 
-            console.log('📋 Fetched agents:', data);
-
             // Map agents - API returns {id, name, description, capabilities}
-            const agents: Agent[] = Array.isArray(data) ? data.map((a: any) => ({
-                id: a.id,  // Fixed: API returns 'id', not 'agent_id'
+            const agents: Agent[] = Array.isArray(data) ? (data as RawAgent[]).map((a) => ({
+                id: a.id,
                 name: a.name,
                 specialty: a.description,
                 status: 'online' as const,
                 avatar_color: getAgentColor(a.id)
             })) : [];
 
-            console.log('✅ Mapped agents:', agents);
-
             setAvailableAgents(agents);
             if (agents.length > 0) {
                 setSelectedAgent(agents[0]);
-                console.log('🎯 Selected default agent:', agents[0]);
             }
         } catch (error) {
-            console.error('❌ Failed to fetch agents:', error);
+            console.error('Failed to fetch agents:', error);
         }
     };
 
@@ -210,18 +233,13 @@ export function ChatInterface() {
     };
 
     const sendMessage = async () => {
-        if (!inputText.trim()) return;
-
-        // Check if agent is selected
-        if (!selectedAgent) {
-            alert('Please select an agent first');
-            return;
-        }
+        const messageText = inputText.trim();
+        if (!messageText) return;
 
         const userMessage: Message = {
             id: generateId(),
             sender: 'user',
-            content: inputText,
+            content: messageText,
             timestamp: new Date(),
             status: 'sending'
         };
@@ -229,19 +247,29 @@ export function ChatInterface() {
         addMessage(userMessage);
         setInputText('');
 
+        let sessionId = localStorage.getItem('chat_session_id');
+        if (!sessionId) {
+            sessionId = generateId();
+            localStorage.setItem('chat_session_id', sessionId);
+            setCurrentSessionId(sessionId);
+        }
+        const activeSessionId = sessionId;
+
+        const shouldUseWebSocket =
+            Boolean(ws && ws.readyState === WebSocket.OPEN) &&
+            Boolean(selectedAgent?.id) &&
+            isUuidLike(selectedAgent?.id || '');
+
         // Try WebSocket first
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            console.log('📤 Sending via WebSocket');
-
-            // Get session ID from localStorage
-            const sessionId = localStorage.getItem('chat_session_id') || generateId();
-
+        if (shouldUseWebSocket && ws && selectedAgent) {
             ws.send(JSON.stringify({
                 type: 'chat',
-                agent_id: selectedAgent.id,
-                message: inputText,
-                message_id: userMessage.id,
-                session_id: sessionId  // Include session ID for persistence
+                data: {
+                    agent_id: selectedAgent.id,
+                    message: messageText,
+                    message_id: userMessage.id,
+                    session_id: activeSessionId
+                }
             }));
 
             // Update status to sent
@@ -256,15 +284,15 @@ export function ChatInterface() {
             }, 500);
         } else {
             // WebSocket not available - use HTTP API fallback
-            console.warn('⚠️ WebSocket not connected, using HTTP API fallback');
+            console.warn('WebSocket unavailable for current chat context, using HTTP API fallback');
 
             try {
-                const response = await fetch('http://localhost:8008/api/v1/chat/completions', {
+                const response = await fetch(apiPath('/v1/chat/completions'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         messages: messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.content }))
-                            .concat([{ role: 'user', content: inputText }]),
+                            .concat([{ role: 'user', content: messageText }]),
                         stream: false
                     })
                 });
@@ -274,13 +302,12 @@ export function ChatInterface() {
                 }
 
                 const data = await response.json();
-                console.log('✅ HTTP Response:', data);
 
                 // Add assistant response
                 const assistantMessage: Message = {
                     id: generateId(),
                     sender: 'agent', // Changed from 'assistant' to 'agent' to match existing type
-                    content: data.content,
+                    content: data.content || data.message || '',
                     timestamp: new Date(),
                     status: 'delivered'
                 };
@@ -288,10 +315,22 @@ export function ChatInterface() {
                 addMessage(assistantMessage);
 
                 // Save both messages to history
-                const sessionId = localStorage.getItem('chat_session_id')!;
-                await saveMessageToHistory(sessionId, userMessage.id, 'user', inputText, selectedAgent.id, selectedAgent.name);
-                await saveMessageToHistory(sessionId, assistantMessage.id, 'agent', data.content, selectedAgent.id, selectedAgent.name);
-                console.log('💾 Messages saved to history');
+                await saveMessageToHistory(
+                    activeSessionId,
+                    userMessage.id,
+                    'user',
+                    messageText,
+                    selectedAgent?.id,
+                    selectedAgent?.name
+                );
+                await saveMessageToHistory(
+                    activeSessionId,
+                    assistantMessage.id,
+                    'agent',
+                    assistantMessage.content,
+                    selectedAgent?.id,
+                    selectedAgent?.name
+                );
 
                 // Update user message status
                 setMessages(prev =>
@@ -302,7 +341,7 @@ export function ChatInterface() {
                     )
                 );
             } catch (error) {
-                console.error('❌ HTTP fallback failed:', error);
+                console.error('HTTP fallback failed:', error);
                 // Update message to show error
                 setMessages(prev =>
                     prev.map(msg =>
@@ -329,12 +368,12 @@ export function ChatInterface() {
             setCurrentSessionId(sessionId);
 
             // Load session history
-            const response = await fetch(`http://localhost:8008/api/v1/chat/history/${sessionId}`);
+            const response = await fetch(apiPath(`/v1/chat/history/${sessionId}`));
             if (response.ok) {
                 const data = await response.json();
 
-                if (data.messages && data.messages.length > 0) {
-                    const loadedMessages = data.messages.map((msg: any) => ({
+                if (Array.isArray(data.messages) && data.messages.length > 0) {
+                    const loadedMessages = (data.messages as RawChatMessage[]).map((msg) => ({
                         id: msg.id,
                         sender: msg.sender,
                         agent_id: msg.agent_id,
@@ -345,7 +384,6 @@ export function ChatInterface() {
                     }));
 
                     setMessages(loadedMessages);
-                    console.log(`✅ Switched to session ${sessionId} with ${loadedMessages.length} messages`);
                 }
             }
         } catch (error) {
@@ -354,14 +392,7 @@ export function ChatInterface() {
     };
 
     const handleNewChat = () => {
-        console.log('🔵 handleNewChat CALLED - starting execution');
         try {
-            console.log(`🔵 Current messages count: ${messages.length}`);
-
-            // Skip confirmation for now - just clear directly
-            // TODO: Add proper confirmation modal later
-            console.log('🔵 Clearing messages without confirmation (bypassing dialog issue)');
-
             // Clear current messages
             setMessages([]);
 
@@ -370,10 +401,8 @@ export function ChatInterface() {
             console.log('🔵 Generated new session ID:', newSessionId);
             localStorage.setItem('chat_session_id', newSessionId);
             setCurrentSessionId(newSessionId);
-
-            console.log('🆕 Started new chat session:', newSessionId);
         } catch (error) {
-            console.error('❌ Error starting new chat:', error);
+            console.error('Error starting new chat:', error);
             alert('Failed to start new chat. Please try again.');
         }
     };
@@ -387,12 +416,14 @@ export function ChatInterface() {
 
     return (
         <>
-            <ChatHistorySidebar
-                currentSessionId={currentSessionId}
-                onSessionSelect={handleSessionSelect}
-                onNewChat={handleNewChat}
-            />
-            <div className="chat-interface" style={{ marginLeft: '260px' }}>
+            {!embedded && (
+                <ChatHistorySidebar
+                    currentSessionId={currentSessionId}
+                    onSessionSelect={handleSessionSelect}
+                    onNewChat={handleNewChat}
+                />
+            )}
+            <div className={`chat-interface dcis-chat ${embedded ? 'embedded' : ''}`}>
                 {/* Header */}
                 <div className="chat-header">
                     <div className="agent-selector">
@@ -416,7 +447,7 @@ export function ChatInterface() {
 
                     {selectedAgent && (
                         <div className="agent-status">
-                            <span className={`status-dot ${selectedAgent.status}`} />
+                            <span className={`chat-status-dot ${selectedAgent.status}`} />
                             <span>{selectedAgent.status}</span>
                         </div>
                     )}
@@ -433,12 +464,21 @@ export function ChatInterface() {
 
                 {/* Messages Container */}
                 <div className="messages-container">
+                    {messages.length === 0 && !isTyping && (
+                        <div className="chat-empty-state">
+                            <Sparkles size={32} className="chat-empty-icon" />
+                            <p className="chat-empty-text">
+                                {selectedAgent
+                                    ? `Start a conversation with ${selectedAgent.name}`
+                                    : 'Select an agent above to begin chatting'}
+                            </p>
+                        </div>
+                    )}
                     <AnimatePresence initial={false}>
-                        {messages.map((message, idx) => (
+                        {messages.map((message) => (
                             <MessageBubble
                                 key={message.id}
                                 message={message}
-                                isLatest={idx === messages.length - 1}
                             />
                         ))}
                     </AnimatePresence>
@@ -486,10 +526,9 @@ export function ChatInterface() {
 
 interface MessageBubbleProps {
     message: Message;
-    isLatest: boolean;
 }
 
-function MessageBubble({ message, isLatest }: MessageBubbleProps) {
+function MessageBubble({ message }: MessageBubbleProps) {
     const isUser = message.sender === 'user';
     const [feedback, setFeedback] = useState<'thumbs_up' | 'thumbs_down' | null>(message.feedback || null);
 
@@ -504,7 +543,7 @@ function MessageBubble({ message, isLatest }: MessageBubbleProps) {
 
         // Submit feedback to backend
         try {
-            await fetch('/api/v1/rlhf/feedback', {
+            await fetch(apiPath('/v1/rlhf/feedback'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -556,8 +595,7 @@ function MessageBubble({ message, isLatest }: MessageBubbleProps) {
                     ) : (
                         <ReactMarkdown
                             components={{
-                                code(props: any) {
-                                    const { node, inline, className, children, ...rest } = props;
+                                code({ inline, className, children, ...rest }: React.ComponentPropsWithoutRef<'code'> & { inline?: boolean }) {
                                     const match = /language-(\w+)/.exec(className || '');
                                     return !inline && match ? (
                                         <SyntaxHighlighter
@@ -704,4 +742,8 @@ function getAgentColor(agentId: string): string {
     }, 0);
 
     return colors[Math.abs(hash) % colors.length];
+}
+
+function isUuidLike(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

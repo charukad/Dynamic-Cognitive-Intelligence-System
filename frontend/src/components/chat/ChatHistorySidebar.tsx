@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Chat History Sidebar
  * 
@@ -7,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Plus, Trash2, ChevronLeft } from 'lucide-react';
 import './ChatHistorySidebar.css';
+import { apiPath } from '@/lib/runtime';
 
 interface ChatSession {
     session_id: string;
@@ -34,11 +37,10 @@ export default function ChatHistorySidebar({ currentSessionId, onSessionSelect, 
 
     const loadSessions = async () => {
         try {
-            const response = await fetch('http://localhost:8008/api/v1/chat/sessions');
+            const response = await fetch(apiPath('/v1/chat/sessions'));
             if (response.ok) {
                 const data = await response.json();
                 setSessions(data.sessions);
-                console.log(`📚 Loaded ${data.count} chat sessions`);
             }
         } catch (error) {
             console.error('Failed to load sessions:', error);
@@ -53,13 +55,12 @@ export default function ChatHistorySidebar({ currentSessionId, onSessionSelect, 
         if (!window.confirm('Delete this conversation?')) return;
 
         try {
-            const response = await fetch(`http://localhost:8008/api/v1/chat/history/${sessionId}`, {
+            const response = await fetch(apiPath(`/v1/chat/history/${sessionId}`), {
                 method: 'DELETE'
             });
 
             if (response.ok) {
                 setSessions(prev => prev.filter(s => s.session_id !== sessionId));
-                console.log(`🗑️ Deleted session: ${sessionId}`);
 
                 // If deleted current session, create new one
                 if (sessionId === currentSessionId) {

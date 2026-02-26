@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers";
-import { SwarmCanvas } from "@/components/orbit/Canvas";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -34,11 +33,10 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} antialiased bg-[#000000] text-foreground overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} antialiased bg-[#000000] text-foreground overflow-x-hidden`}
       >
         <Providers>
-          <div className="flex h-screen w-screen bg-black">
-            {/* Optional: Add a subtle ambient background if requested later, but keeping it simple black for now */}
+          <div className="min-h-screen w-full bg-black">
             {children}
           </div>
           <Toaster richColors position="top-right" />
@@ -47,4 +45,3 @@ export default function RootLayout({
     </html>
   );
 }
-

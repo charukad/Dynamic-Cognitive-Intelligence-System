@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { GraphNode, GraphEdge } from '../components/cortex/ForceSimulation';
 import * as THREE from 'three';
+import { apiPath } from '@/lib/runtime';
 
 interface UseKnowledgeGraphReturn {
     nodes: GraphNode[];
@@ -14,6 +15,31 @@ interface UseKnowledgeGraphReturn {
     loading: boolean;
     error: string | null;
     refetch: () => Promise<void>;
+}
+
+interface GraphApiNode {
+    id: string;
+    labels: string[];
+    properties: {
+        name?: string;
+        label?: string;
+        importance?: number;
+        cluster?: string;
+    };
+}
+
+interface GraphApiRelationship {
+    id: string;
+    startNodeId: string;
+    endNodeId: string;
+    properties: {
+        weight?: number;
+    };
+}
+
+interface GraphApiResponse {
+    nodes: GraphApiNode[];
+    relationships: GraphApiRelationship[];
 }
 
 /**
@@ -31,16 +57,16 @@ export function useKnowledgeGraph(): UseKnowledgeGraphReturn {
             setError(null);
 
             // Fetch from backend API
-            const response = await fetch('http://localhost:8008/api/v1/graph/full');
+            const response = await fetch(apiPath('/v1/graph/full'));
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            const data = await response.json();
+            const data = (await response.json()) as GraphApiResponse;
 
             // Transform API data to graph format
-            const transformedNodes: GraphNode[] = data.nodes.map((node: any) => ({
+            const transformedNodes: GraphNode[] = data.nodes.map((node) => ({
                 id: node.id,
                 label: node.properties.name || node.properties.label || node.id,
                 type: node.labels[0] || 'default',
@@ -52,7 +78,7 @@ export function useKnowledgeGraph(): UseKnowledgeGraphReturn {
                 cluster: node.properties.cluster || node.labels[0],
             }));
 
-            const transformedEdges: GraphEdge[] = data.relationships.map((rel: any) => ({
+            const transformedEdges: GraphEdge[] = data.relationships.map((rel) => ({
                 id: rel.id,
                 source: rel.startNodeId,
                 target: rel.endNodeId,

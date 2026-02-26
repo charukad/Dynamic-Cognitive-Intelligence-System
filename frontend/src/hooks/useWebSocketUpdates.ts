@@ -1,176 +1,187 @@
 /**
  * useWebSocketUpdates Hook
- * 
+ *
  * Custom React hook for real-time WebSocket updates.
  * Replaces setInterval polling with efficient WebSocket connections.
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { apiPath, wsUrl } from '@/lib/runtime';
 
-interface UseWebSocketUpdatesOptions {
-    url: string;
-    onMessage?: (data: any) => void;
-    onError?: (error: Event) => void;
-    reconnect?: boolean;
-    reconnectInterval?: number;
+interface UseWebSocketUpdatesOptions<TMessage = unknown> {
+  url: string;
+  onMessage?: (data: TMessage) => void;
+  onError?: (error: Event) => void;
+  reconnect?: boolean;
+  reconnectInterval?: number;
 }
 
-export function useWebSocketUpdates<T = any>({
-    url,
-    onMessage,
-    onError,
-    reconnect = true,
-    reconnectInterval = 3000,
-}: UseWebSocketUpdatesOptions) {
-    const [data, setData] = useState<T | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
-    const [error, setError] = useState<Event | null>(null);
+export function useWebSocketUpdates<T = unknown>({
+  url,
+  onMessage,
+  onError,
+  reconnect = true,
+  reconnectInterval = 3000,
+}: UseWebSocketUpdatesOptions<T>) {
+  const [data, setData] = useState<T | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<Event | null>(null);
 
-    const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectRef = useRef<(() => void) | null>(null);
 
-    const connect = useCallback(() => {
-        try {
-            const ws = new WebSocket(url);
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
 
-            ws.onopen = () => {
-                console.log(`WebSocket connected: ${url}`);
-                setIsConnected(true);
-                setError(null);
-            };
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
 
-            ws.onmessage = (event) => {
-                try {
-                    const parsedData = JSON.parse(event.data);
-                    setData(parsedData);
-                    onMessage?.(parsedData);
-                } catch (err) {
-                    console.error('Failed to parse WebSocket message:', err);
-                }
-            };
+  const send = useCallback((message: unknown) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const payload = typeof message === 'string' ? message : JSON.stringify(message);
+      wsRef.current.send(payload);
+      return;
+    }
 
-            ws.onerror = (event) => {
-                console.error('WebSocket error:', event);
-                setError(event);
-                onError?.(event);
-            };
+    console.warn('WebSocket is not connected');
+  }, []);
 
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                setIsConnected(false);
+  useEffect(() => {
+    let disposed = false;
 
-                // Attempt reconnect if enabled
-                if (reconnect) {
-                    reconnectTimeoutRef.current = setTimeout(() => {
-                        console.log('Attempting to reconnect...');
-                        connect();
-                    }, reconnectInterval);
-                }
-            };
+    const connect = () => {
+      try {
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
 
-            wsRef.current = ws;
-        } catch (err) {
-            console.error('Failed to create WebSocket:', err);
-        }
-    }, [url, onMessage, onError, reconnect, reconnectInterval]);
-
-    const disconnect = useCallback(() => {
-        if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-        }
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-        }
-    }, []);
-
-    const send = useCallback((message: any) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
-            wsRef.current.send(messageStr);
-        } else {
-            console.warn('WebSocket is not connected');
-        }
-    }, []);
-
-    useEffect(() => {
-        connect();
-
-        return () => {
-            disconnect();
+        ws.onopen = () => {
+          if (disposed) return;
+          setIsConnected(true);
+          setError(null);
         };
-    }, [connect, disconnect]);
 
-    return {
-        data,
-        isConnected,
-        error,
-        send,
-        reconnect: connect,
-        disconnect,
+        ws.onmessage = (event) => {
+          try {
+            const parsed = JSON.parse(event.data) as T;
+            setData(parsed);
+            onMessage?.(parsed);
+          } catch (parseError) {
+            console.error('Failed to parse WebSocket message:', parseError);
+          }
+        };
+
+        ws.onerror = (event) => {
+          if (disposed) return;
+          setError(event);
+          onError?.(event);
+        };
+
+        ws.onclose = () => {
+          if (disposed) return;
+
+          setIsConnected(false);
+
+          if (reconnect) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectRef.current?.();
+            }, reconnectInterval);
+          }
+        };
+      } catch (connectError) {
+        console.error('Failed to create WebSocket:', connectError);
+      }
     };
+
+    reconnectRef.current = connect;
+    connect();
+
+    return () => {
+      disposed = true;
+      disconnect();
+    };
+  }, [url, reconnect, reconnectInterval, onMessage, onError, disconnect]);
+
+  const reconnectNow = useCallback(() => {
+    reconnectRef.current?.();
+  }, []);
+
+  return {
+    data,
+    isConnected,
+    error,
+    send,
+    reconnect: reconnectNow,
+    disconnect,
+  };
 }
 
 /**
  * useMetricsWebSocket Hook
- * 
+ *
  * Specialized hook for metrics updates via WebSocket.
  * Falls back to polling if WebSocket is not available.
  */
-export function useMetricsWebSocket<T = any>(endpoint: string, pollInterval: number = 5000) {
-    const [data, setData] = useState<T | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [usePolling, setUsePolling] = useState(false);
+export function useMetricsWebSocket<T = unknown>(endpoint: string, pollInterval = 5000) {
+  const [pollData, setPollData] = useState<T | null>(null);
+  const [pollLoading, setPollLoading] = useState(false);
+  const [usePolling, setUsePolling] = useState(false);
 
-    // Construct WebSocket URL
-    const wsUrl = endpoint.startsWith('ws')
-        ? endpoint
-        : `ws://localhost:8008${endpoint}`;
+  const websocketEndpoint = endpoint.startsWith('ws')
+    ? endpoint
+    : wsUrl(endpoint.startsWith('/ws/') ? endpoint : `/ws${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`);
 
-    // Try WebSocket first
-    const { data: wsData, isConnected } = useWebSocketUpdates<T>({
-        url: wsUrl,
-        reconnect: true,
-        onError: () => {
-            // Fallback to polling on WebSocket failure
-            console.log('WebSocket failed, falling back to HTTP polling');
-            setUsePolling(true);
-        },
-    });
+  const { data: wsData, isConnected } = useWebSocketUpdates<T>({
+    url: websocketEndpoint,
+    reconnect: true,
+    onError: () => {
+      setUsePolling(true);
+    },
+  });
 
-    // Update data from WebSocket
-    useEffect(() => {
-        if (wsData && isConnected) {
-            setData(wsData);
-            setLoading(false);
-            setUsePolling(false);
+  useEffect(() => {
+    if (!usePolling) return;
+
+    let cancelled = false;
+    const fetchData = async () => {
+      try {
+        setPollLoading(true);
+        const response = await fetch(apiPath(endpoint));
+        const result = (await response.json()) as T;
+        if (!cancelled) {
+          setPollData(result);
         }
-    }, [wsData, isConnected]);
+      } catch (pollError) {
+        console.error('Polling failed:', pollError);
+      } finally {
+        if (!cancelled) {
+          setPollLoading(false);
+        }
+      }
+    };
 
-    // Fallback: HTTP polling
-    useEffect(() => {
-        if (!usePolling) return;
+    fetchData();
+    const interval = setInterval(fetchData, pollInterval);
 
-        const fetchData = async () => {
-            try {
-                // Add /api prefix for proxying
-                const response = await fetch(`http://localhost:8008/api${endpoint}`);
-                const result = await response.json();
-                setData(result);
-                setLoading(false);
-            } catch (error) {
-                console.error('Polling failed:', error);
-            }
-        };
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [usePolling, endpoint, pollInterval]);
 
-        // Initial fetch
-        fetchData();
+  const data = usePolling ? pollData : (wsData ?? pollData);
+  const loading = usePolling ? pollLoading : !isConnected && pollData === null;
 
-        // Set up polling
-        const interval = setInterval(fetchData, pollInterval);
-
-        return () => clearInterval(interval);
-    }, [usePolling, endpoint, pollInterval]);
-
-    return { data, loading, isPolling: usePolling, isWebSocket: !usePolling && isConnected };
+  return {
+    data,
+    loading,
+    isPolling: usePolling,
+    isWebSocket: !usePolling && isConnected,
+  };
 }

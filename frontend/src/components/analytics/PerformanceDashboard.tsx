@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Performance Dashboard - 3D Visualizations & Analytics
  * 
@@ -11,14 +13,14 @@
  * - Performance trends
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sphere, MeshDistortMaterial, Stars } from '@react-three/drei';
 import {
     LineChart,
     Line,
-    BarChart,
-    Bar,
     RadarChart,
     Radar,
     PolarGrid,
@@ -39,7 +41,6 @@ import {
     Zap,
     Target,
     Activity,
-    Calendar
 } from 'lucide-react';
 import { useMetricsWebSocket } from '@/hooks/useWebSocketUpdates';
 import './PerformanceDashboard.css';
@@ -75,30 +76,18 @@ type TimeRange = '24h' | '7d' | '30d' | '90d';
 // ============================================================================
 
 export function PerformanceDashboard() {
-    const [agents, setAgents] = useState<AgentMetrics[]>([]);
     const [selectedMetric, setSelectedMetric] = useState<'success_rate' | 'elo' | 'response_time'>('success_rate');
     const [timeRange, setTimeRange] = useState<TimeRange>('7d');
     const [performanceHistory, setPerformanceHistory] = useState<Record<string, PerformanceHistory[]>>({});
 
     // Use WebSocket for real-time metrics (with polling fallback)
-    const { data: metricsData, isWebSocket } = useMetricsWebSocket<{ agents: AgentMetrics[] }>(
+    const { data: metricsData } = useMetricsWebSocket<{ agents: AgentMetrics[] }>(
         '/v1/agents/metrics',
         5000 // Fallback polling interval
     );
+    const agents = useMemo(() => metricsData?.agents ?? [], [metricsData]);
 
-    // Update agents when WebSocket/polling data arrives
-    useEffect(() => {
-        if (metricsData?.agents) {
-            setAgents(metricsData.agents);
-        }
-    }, [metricsData]);
-
-    // Fetch performance history (one-time or on time range change)
-    useEffect(() => {
-        fetchPerformanceHistory();
-    }, [timeRange]);
-
-    const fetchPerformanceHistory = async () => {
+    const fetchPerformanceHistory = useCallback(async () => {
         try {
             const response = await fetch(`/api/v1/agents/performance-history?range=${timeRange}`);
             const data = await response.json();
@@ -106,7 +95,18 @@ export function PerformanceDashboard() {
         } catch (error) {
             console.error('Failed to fetch history:', error);
         }
-    };
+    }, [timeRange]);
+
+    // Fetch performance history (one-time or on time range change)
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchPerformanceHistory();
+        }, 0);
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+        };
+    }, [fetchPerformanceHistory]);
 
     // Calculate aggregate stats
     const stats = useMemo(() => {
@@ -331,7 +331,7 @@ export function PerformanceDashboard() {
                         <span>Wins/Losses</span>
                     </div>
 
-                    {agents
+                    {[...agents]
                         .sort((a, b) => b.elo_rating - a.elo_rating)
                         .map((agent, idx) => (
                             <motion.div

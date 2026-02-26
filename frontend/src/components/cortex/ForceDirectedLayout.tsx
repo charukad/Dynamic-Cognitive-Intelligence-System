@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import * as forceGraph3d from 'd3-force-3d';
 import { useGraphStore } from '@/store/graphStore';
-import { GraphNode, GraphLink } from '@/types/graph';
+import { GraphNode } from '@/types/graph';
 
 // Force d3-force-3d types (since they might be missing/generic)
 // We import the module just to get the forceSimulation function

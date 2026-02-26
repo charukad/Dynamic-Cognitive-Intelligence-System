@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Evolution Dashboard - GAIA Genetic Algorithm Visualization
  * 
@@ -11,8 +13,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Dna,
     TrendingUp,
@@ -27,8 +28,6 @@ import { Button } from '@/components/ui/button';
 import {
     LineChart,
     Line,
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -56,20 +55,20 @@ interface EvolutionStats {
     } | null;
 }
 
-interface Strategy {
-    id: string;
-    task_pattern: string;
-    strategy_description: string;
-    avg_success_rate: number;
-    usage_count: number;
-}
-
 interface MetaLearningStats {
     total_strategies: number;
     domains: string[];
     avg_success_rate: number;
-    most_used: any;
+    most_used: unknown;
 }
+
+const INITIAL_FITNESS_HISTORY = [
+    { generation: 0, avg: 0.45, best: 0.62 },
+    { generation: 1, avg: 0.52, best: 0.71 },
+    { generation: 2, avg: 0.58, best: 0.75 },
+    { generation: 3, avg: 0.63, best: 0.79 },
+    { generation: 4, avg: 0.67, best: 0.83 },
+];
 
 // ============================================================================
 // Main Component
@@ -77,28 +76,13 @@ interface MetaLearningStats {
 
 export function EvolutionDashboard() {
     const [stats, setStats] = useState<EvolutionStats | null>(null);
-    const [strategies, setStrategies] = useState<Strategy[]>([]);
     const [metaStats, setMetaStats] = useState<MetaLearningStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isEvolving, setIsEvolving] = useState(false);
-
-    // Mock fitness history for demo
-    const [fitnessHistory, setFitnessHistory] = useState([
-        { generation: 0, avg: 0.45, best: 0.62 },
-        { generation: 1, avg: 0.52, best: 0.71 },
-        { generation: 2, avg: 0.58, best: 0.75 },
-        { generation: 3, avg: 0.63, best: 0.79 },
-        { generation: 4, avg: 0.67, best: 0.83 },
-    ]);
+    const fitnessHistory = INITIAL_FITNESS_HISTORY;
 
     // Fetch data
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const [statsRes, metaStatsRes] = await Promise.all([
@@ -113,7 +97,21 @@ export function EvolutionDashboard() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchData();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchData();
+        }, 5000);
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchData]);
 
     const handleEvolve = async () => {
         setIsEvolving(true);
@@ -146,18 +144,18 @@ export function EvolutionDashboard() {
     }
 
     return (
-        <div className="h-full w-full bg-black/50 rounded-lg overflow-hidden flex flex-col">
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-emerald-500/20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_42%),linear-gradient(180deg,rgba(7,20,19,0.96),rgba(10,22,38,0.8))] shadow-[0_22px_64px_rgba(0,0,0,0.45)] flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <div className="border-b border-emerald-500/15 bg-black/25 p-4 backdrop-blur-md md:p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
                         <Dna className="h-5 w-5 text-green-400" />
                         GAIA Evolution Engine
                     </h2>
                     <Button
                         onClick={handleEvolve}
                         disabled={isEvolving}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 via-cyan-600 to-blue-600 hover:from-emerald-500 hover:via-cyan-500 hover:to-blue-500"
                     >
                         <RefreshCw className={`h-4 w-4 ${isEvolving ? 'animate-spin' : ''}`} />
                         {isEvolving ? 'Evolving...' : 'Evolve Generation'}
@@ -166,7 +164,7 @@ export function EvolutionDashboard() {
 
                 {/* Stats Grid */}
                 {stats && (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                         <StatCard
                             icon={<BarChart3 className="h-5 w-5" />}
                             label="Generation"
@@ -196,9 +194,9 @@ export function EvolutionDashboard() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-5">
                 {/* Fitness Chart */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
+                <div className="rounded-xl border border-emerald-500/12 bg-slate-950/55 p-4 md:p-5">
                     <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-green-400" />
                         Fitness Evolution
@@ -238,7 +236,7 @@ export function EvolutionDashboard() {
 
                 {/* Best Genome */}
                 {stats?.best_genome && (
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-green-500/30">
+                    <div className="rounded-xl border border-emerald-500/30 bg-slate-950/55 p-4 md:p-5">
                         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                             <Award className="h-4 w-4 text-yellow-400" />
                             Champion Genome (Gen {stats.best_genome.generation})
@@ -256,9 +254,9 @@ export function EvolutionDashboard() {
                             </div>
                             <div>
                                 <span className="text-gray-400">Capabilities:</span>
-                                <div className="flex gap-1 mt-1">
+                                <div className="mt-1 flex flex-wrap gap-1">
                                     {stats.best_genome.capabilities.map((cap) => (
-                                        <span key={cap} className="bg-purple-900/30 text-purple-300 px-2 py-0.5 rounded text-xs">
+                                        <span key={cap} className="rounded-full border border-emerald-400/20 bg-emerald-950/30 px-2 py-0.5 text-xs text-emerald-200">
                                             {cap}
                                         </span>
                                     ))}
@@ -266,7 +264,7 @@ export function EvolutionDashboard() {
                             </div>
                             <div>
                                 <span className="text-gray-400">System Prompt:</span>
-                                <p className="text-white mt-1 text-xs bg-black/30 p-2 rounded">
+                                <p className="mt-1 rounded-lg border border-white/10 bg-black/30 p-2 text-xs text-white">
                                     {stats.best_genome.system_prompt.substring(0, 200)}...
                                 </p>
                             </div>
@@ -276,12 +274,12 @@ export function EvolutionDashboard() {
 
                 {/* Meta-Learning Stats */}
                 {metaStats && (
-                    <div className="bg-gray-900/50 rounded-lg p-4">
+                    <div className="rounded-xl border border-emerald-500/12 bg-slate-950/55 p-4 md:p-5">
                         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                             <Lightbulb className="h-4 w-4 text-yellow-400" />
                             Meta-Learning Intelligence
                         </h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
                                 <div className="text-xs text-gray-400">Total Strategies</div>
                                 <div className="text-2xl font-bold text-cyan-400">{metaStats.total_strategies}</div>
@@ -294,7 +292,7 @@ export function EvolutionDashboard() {
                             </div>
                             <div>
                                 <div className="text-xs text-gray-400">Domains</div>
-                                <div className="text-sm text-white mt-1">
+                                <div className="mt-1 text-sm text-white">
                                     {metaStats.domains.join(', ') || 'None'}
                                 </div>
                             </div>
@@ -322,10 +320,10 @@ function StatCard({
     color: string;
 }) {
     return (
-        <div className="bg-gray-900/50 rounded px-3 py-2">
+        <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 transition-colors hover:border-emerald-400/25 hover:bg-slate-900/70">
             <div className="flex items-center gap-2 mb-1">
                 <div className={color}>{icon}</div>
-                <div className="text-xs text-gray-400">{label}</div>
+                <div className="text-xs uppercase tracking-wide text-gray-400">{label}</div>
             </div>
             <div className={`text-xl font-bold ${color}`}>{value}</div>
         </div>

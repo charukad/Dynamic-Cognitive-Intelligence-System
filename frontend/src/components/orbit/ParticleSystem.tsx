@@ -10,6 +10,11 @@ import fragmentShader from './shaders/holographic.frag';
 
 const PARTICLE_COUNT = 2000; // Start with 2k for dev
 
+function pseudoRandom(seed: number): number {
+    const value = Math.sin(seed * 12.9898) * 43758.5453;
+    return value - Math.floor(value);
+}
+
 export function ParticleSystem() {
     const pointsRef = useRef<THREE.Points>(null);
 
@@ -23,10 +28,17 @@ export function ParticleSystem() {
         const color = new THREE.Color();
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const randA = pseudoRandom(i + 1);
+            const randB = pseudoRandom(i + 101);
+            const randC = pseudoRandom(i + 1001);
+            const randD = pseudoRandom(i + 2001);
+            const randE = pseudoRandom(i + 3001);
+            const randF = pseudoRandom(i + 4001);
+
             // Spherical distribution
-            const r = 40 * Math.cbrt(Math.random());
-            const theta = Math.random() * 2 * Math.PI;
-            const phi = Math.acos(2 * Math.random() - 1);
+            const r = 40 * Math.cbrt(randA);
+            const theta = randB * 2 * Math.PI;
+            const phi = Math.acos(2 * randC - 1);
 
             const x = r * Math.sin(phi) * Math.cos(theta);
             const y = r * Math.sin(phi) * Math.sin(theta);
@@ -37,7 +49,7 @@ export function ParticleSystem() {
             pos[i * 3 + 2] = z;
 
             // Random Colors (Cyan/Purple/Gold palette)
-            const rand = Math.random();
+            const rand = randD;
             if (rand > 0.6) color.setHex(0x00F0FF); // Cyan
             else if (rand > 0.3) color.setHex(0xB026FF); // Purple
             else color.setHex(0xFFD700); // Gold
@@ -46,8 +58,8 @@ export function ParticleSystem() {
             col[i * 3 + 1] = color.g;
             col[i * 3 + 2] = color.b;
 
-            siz[i] = Math.random() * 2 + 1; // Base size
-            alp[i] = Math.random() * 0.5 + 0.5; // Base alpha
+            siz[i] = randE * 2 + 1; // Base size
+            alp[i] = randF * 0.5 + 0.5; // Base alpha
         }
 
         return {

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Feedback Analytics Dashboard
  * 
@@ -10,9 +12,9 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { ThumbsUp, ThumbsDown, TrendingUp, Award, BarChart3, Activity } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { ThumbsUp, TrendingUp, Award, BarChart3, Activity } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 // ============================================================================
@@ -53,13 +55,7 @@ export function FeedbackAnalyticsDashboard() {
     const [trends, setTrends] = useState<FeedbackTrends | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 10000); // Every 10 seconds
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [statsRes, topAgentsRes, trendsRes] = await Promise.all([
                 apiClient.get('/v1/rlhf/stats'),
@@ -76,7 +72,21 @@ export function FeedbackAnalyticsDashboard() {
             console.error('Failed to fetch feedback data:', error);
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchData();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchData();
+        }, 10000); // Every 10 seconds
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchData]);
 
     if (isLoading || !stats) {
         return (
@@ -110,7 +120,7 @@ export function FeedbackAnalyticsDashboard() {
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {/* Key Metrics */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <MetricCard
                         label="Total Feedback"
                         value={stats.total_feedback.toString()}
@@ -137,7 +147,7 @@ export function FeedbackAnalyticsDashboard() {
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     {/* Feedback Distribution */}
                     <div className="bg-gray-900/50 rounded-lg p-4">
                         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
@@ -286,7 +296,14 @@ export function FeedbackAnalyticsDashboard() {
 // Helper Components
 // ============================================================================
 
-function MetricCard({ label, value, icon, color }: any) {
+interface MetricCardProps {
+    label: string;
+    value: string;
+    icon: React.ReactNode;
+    color: string;
+}
+
+function MetricCard({ label, value, icon, color }: MetricCardProps) {
     return (
         <div className="bg-gray-900/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">

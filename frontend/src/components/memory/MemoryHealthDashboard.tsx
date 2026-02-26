@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Memory Health Dashboard
  * 
@@ -10,7 +12,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Database,
@@ -59,6 +61,13 @@ interface OptimizationResult {
     message: string;
 }
 
+interface OptimizeAllResponse {
+    success?: boolean;
+    total_items_affected?: number;
+    total_storage_saved_mb?: number;
+    message?: string;
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -68,16 +77,9 @@ export function MemoryHealthDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [lastOptimization, setLastOptimization] = useState<OptimizationResult | null>(null);
-    const [selectedAgentId, setSelectedAgentId] = useState('default-agent');
+    const selectedAgentId = 'default-agent';
 
-    // Fetch health data
-    useEffect(() => {
-        fetchHealth();
-        const interval = setInterval(fetchHealth, 10000);
-        return () => clearInterval(interval);
-    }, [selectedAgentId]);
-
-    const fetchHealth = async () => {
+    const fetchHealth = useCallback(async () => {
         try {
             const res = await apiClient.get(`/v1/memory/management/health/${selectedAgentId}`);
             setHealth(res.data || res);
@@ -86,7 +88,22 @@ export function MemoryHealthDashboard() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [selectedAgentId]);
+
+    // Fetch health data
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchHealth();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchHealth();
+        }, 10000);
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchHealth]);
 
     const handlePrune = async () => {
         setIsOptimizing(true);
@@ -125,13 +142,14 @@ export function MemoryHealthDashboard() {
         setIsOptimizing(true);
         try {
             const res = await apiClient.post(`/v1/memory/management/optimize-all/${selectedAgentId}`);
+            const data = (res.data || res) as OptimizeAllResponse;
             setLastOptimization({
                 operation: 'optimize-all',
-                success: res.data?.success || res.success,
+                success: data.success || false,
                 items_processed: 0,
-                items_affected: res.data?.total_items_affected || res.total_items_affected || 0,
-                storage_saved_mb: res.data?.total_storage_saved_mb || res.total_storage_saved_mb || 0,
-                message: res.data?.message || res.message || 'Optimization complete',
+                items_affected: data.total_items_affected || 0,
+                storage_saved_mb: data.total_storage_saved_mb || 0,
+                message: data.message || 'Optimization complete',
             });
             await fetchHealth();
         } catch (error) {
@@ -162,10 +180,10 @@ export function MemoryHealthDashboard() {
     ) : 'text-gray-400';
 
     return (
-        <div className="h-full w-full bg-black/50 rounded-lg overflow-hidden flex flex-col">
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-indigo-500/20 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.14),_transparent_40%),linear-gradient(180deg,rgba(4,8,24,0.96),rgba(15,23,42,0.78))] shadow-[0_22px_64px_rgba(0,0,0,0.48)] flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <div className="border-b border-indigo-500/15 bg-black/25 p-4 backdrop-blur-md md:p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
                     <Database className="h-5 w-5 text-blue-400" />
                     Memory Health Dashboard
                 </h2>
@@ -184,12 +202,12 @@ export function MemoryHealthDashboard() {
                 )}
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                     <Button
                         onClick={handlePrune}
                         disabled={isOptimizing}
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 border-blue-400/30 text-blue-200 hover:border-blue-300/60 hover:bg-blue-500/10"
                     >
                         <Trash2 className="h-4 w-4" />
                         Prune
@@ -198,7 +216,7 @@ export function MemoryHealthDashboard() {
                         onClick={handleCompress}
                         disabled={isOptimizing}
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 border-violet-400/30 text-violet-200 hover:border-violet-300/60 hover:bg-violet-500/10"
                     >
                         <Archive className="h-4 w-4" />
                         Compress
@@ -206,7 +224,7 @@ export function MemoryHealthDashboard() {
                     <Button
                         disabled={isOptimizing}
                         variant="outline"
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 border-cyan-400/30 text-cyan-200 hover:border-cyan-300/60 hover:bg-cyan-500/10"
                     >
                         <Share2 className="h-4 w-4" />
                         Share
@@ -214,7 +232,7 @@ export function MemoryHealthDashboard() {
                     <Button
                         onClick={handleOptimizeAll}
                         disabled={isOptimizing}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600"
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 hover:from-blue-500 hover:via-indigo-400 hover:to-cyan-400"
                     >
                         <Zap className="h-4 w-4" />
                         Optimize All
@@ -223,10 +241,10 @@ export function MemoryHealthDashboard() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 md:space-y-5 md:p-5">
                 {/* Stats Grid */}
                 {health && (
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <MetricCard
                             icon={<Database className="h-5 w-5" />}
                             label="Total Memories"
@@ -254,9 +272,9 @@ export function MemoryHealthDashboard() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     {/* Type Distribution */}
-                    <div className="bg-gray-900/50 rounded-lg p-4">
+                    <div className="rounded-xl border border-indigo-500/10 bg-slate-950/55 p-4 md:p-5">
                         <h3 className="text-white font-semibold mb-4">Memory Distribution</h3>
                         <ResponsiveContainer width="100%" height={200}>
                             <PieChart>
@@ -287,7 +305,7 @@ export function MemoryHealthDashboard() {
 
                     {/* Optimization Opportunities */}
                     {health && (
-                        <div className="bg-gray-900/50 rounded-lg p-4">
+                        <div className="rounded-xl border border-indigo-500/10 bg-slate-950/55 p-4 md:p-5">
                             <h3 className="text-white font-semibold mb-4">Optimization Opportunities</h3>
                             <div className="space-y-3">
                                 <OpportunityCard
@@ -314,7 +332,7 @@ export function MemoryHealthDashboard() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-900/50 rounded-lg p-4 border border-green-500/30"
+                        className="rounded-xl border border-emerald-500/30 bg-slate-950/55 p-4 md:p-5"
                     >
                         <div className="flex items-start gap-3">
                             <CheckCircle className="h-5 w-5 text-green-400 mt-0.5" />
@@ -325,7 +343,7 @@ export function MemoryHealthDashboard() {
                                 <div className="text-sm text-gray-400 mb-2">
                                     {lastOptimization.message}
                                 </div>
-                                <div className="grid grid-cols-3 gap-4 text-xs">
+                                <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
                                     <div>
                                         <span className="text-gray-500">Items Affected:</span>
                                         <span className="text-blue-400 ml-1 font-bold">
@@ -364,12 +382,12 @@ function MetricCard({
     color: string;
 }) {
     return (
-        <div className="bg-gray-900/50 rounded px-3 py-2">
+        <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-400/25 hover:bg-slate-900/75">
             <div className="flex items-center gap-2 mb-1">
                 <div className={color}>{icon}</div>
-                <div className="text-xs text-gray-400">{label}</div>
+                <div className="text-xs uppercase tracking-wide text-gray-400">{label}</div>
             </div>
-            <div className={`text-xl font-bold ${color}`}>{value}</div>
+            <div className={`text-xl font-bold leading-none ${color}`}>{value}</div>
         </div>
     );
 }
@@ -394,7 +412,7 @@ function OpportunityCard({
     }[severity];
 
     return (
-        <div className="flex items-center justify-between p-2 bg-black/30 rounded">
+        <div className="flex items-center justify-between rounded-lg border border-white/8 bg-black/30 p-2.5 transition-colors hover:border-indigo-400/20 hover:bg-indigo-950/20">
             <div className="flex items-center gap-2">
                 <div className={severityColor}>{icon}</div>
                 <div>

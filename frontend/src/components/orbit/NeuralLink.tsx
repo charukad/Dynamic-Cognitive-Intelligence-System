@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Neural Link Connection Renderer
  * 
@@ -11,7 +13,9 @@
  * - Batch rendering for performance
  */
 
-import { useRef, useMemo, useEffect } from 'react';
+'use client';
+
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
@@ -116,18 +120,16 @@ class ConnectionUtils {
 
 function ConnectionLine({
     connection,
-    currentTime,
     maxAge,
     fadeOutDuration,
     flowSpeed,
 }: {
     connection: Connection;
-    currentTime: number;
     maxAge: number;
     fadeOutDuration: number;
     flowSpeed: number;
 }) {
-    const lineRef = useRef<THREE.Line>(null);
+    const lineRef = useRef<THREE.Object3D | null>(null);
 
     // Calculate control point for Bezier curve
     const controlPoint = useMemo(
@@ -150,38 +152,59 @@ function ConnectionLine({
         [connection, controlPoint]
     );
 
-    // Calculate opacity
-    const opacity = ConnectionUtils.calculateOpacity(
-        connection.createdAt,
-        currentTime,
-        maxAge,
-        fadeOutDuration
-    );
-
     // Animate flow
-    useFrame((state, delta) => {
+    useFrame((_, delta) => {
         if (!lineRef.current) return;
 
-        // Update flow direction
-        connection.flowDirection = (connection.flowDirection + delta * flowSpeed) % 1;
+        const opacity = ConnectionUtils.calculateOpacity(
+            connection.createdAt,
+            Date.now(),
+            maxAge,
+            fadeOutDuration
+        );
 
         // Animate dashed line to show flow
-        const material = lineRef.current.material as THREE.LineBasicMaterial;
-        if (material.dashOffset !== undefined) {
-            material.dashOffset -= delta * 2;
-        }
-    });
+        const material =
+            'material' in lineRef.current
+                ? lineRef.current.material
+                : null;
 
-    if (opacity <= 0) return null;
+        if (!material) {
+            return;
+        }
+
+        const dashStep = delta * (2 + flowSpeed);
+
+        if (Array.isArray(material)) {
+            material.forEach((entry) => {
+                if ('dashOffset' in entry && typeof entry.dashOffset === 'number') {
+                    entry.dashOffset -= dashStep;
+                }
+                if ('opacity' in entry && typeof entry.opacity === 'number') {
+                    entry.opacity = opacity * 0.6;
+                }
+            });
+            lineRef.current.visible = opacity > 0;
+            return;
+        }
+
+        if ('dashOffset' in material && typeof material.dashOffset === 'number') {
+            material.dashOffset -= dashStep;
+        }
+        if ('opacity' in material && typeof material.opacity === 'number') {
+            material.opacity = opacity * 0.6;
+        }
+        lineRef.current.visible = opacity > 0;
+    });
 
     return (
         <Line
             ref={lineRef}
             points={points}
             color={connection.color}
-            lineWidth={CONNECTION_WIDTH * connection.strength * opacity}
+            lineWidth={CONNECTION_WIDTH * connection.strength}
             transparent
-            opacity={opacity * 0.6}
+            opacity={0.6}
             dashed
             dashScale={20}
             dashSize={0.5}
@@ -200,25 +223,12 @@ export function NeuralLink({
     flowSpeed = FLOW_SPEED,
     fadeOutDuration = FADE_OUT_DURATION,
 }: NeuralLinkProps) {
-    const timeRef = useRef(Date.now());
-
-    useFrame(() => {
-        timeRef.current = Date.now();
-    });
-
-    // Filter out expired connections
-    const activeConnections = connections.filter(conn => {
-        const age = timeRef.current - conn.createdAt;
-        return age <= maxConnectionAge;
-    });
-
     return (
         <group name="neural-link">
-            {activeConnections.map(connection => (
+            {connections.map(connection => (
                 <ConnectionLine
                     key={connection.id}
                     connection={connection}
-                    currentTime={timeRef.current}
                     maxAge={maxConnectionAge}
                     fadeOutDuration={fadeOutDuration}
                     flowSpeed={flowSpeed}

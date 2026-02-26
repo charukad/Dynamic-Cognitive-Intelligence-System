@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { BrainCircuitIcon, PlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AgentModal } from "@/components/agents/AgentModal";
-import { AgentFormData } from "@/components/agents/AgentForm";
 import { toast } from "sonner";
 import {
     AlertDialog,
@@ -26,12 +25,20 @@ import {
 interface AgentResponse {
     id: string;
     name: string;
-    agent_type: string;
-    status: string;
+    agent_type: 'data_analyst' | 'designer' | 'translator' | 'financial_advisor' | 'researcher' | 'code_generator' | 'general';
+    status: 'active' | 'inactive' | 'training';
     system_prompt: string;
     capabilities?: string[];
     temperature?: number;
 }
+
+type APIErrorLike = {
+    response?: {
+        data?: {
+            detail?: string;
+        };
+    };
+};
 
 export default function AgentsPage() {
     const queryClient = useQueryClient();
@@ -52,8 +59,9 @@ export default function AgentsPage() {
             queryClient.invalidateQueries({ queryKey: ["agents"] });
             setDeletingAgent(null);
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.detail || "Failed to delete agent");
+        onError: (error: unknown) => {
+            const detail = (error as APIErrorLike).response?.data?.detail;
+            toast.error(detail || "Failed to delete agent");
         },
     });
 
@@ -172,7 +180,7 @@ export default function AgentsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the agent "{deletingAgent?.name}".
+                            This will permanently delete the agent &quot;{deletingAgent?.name}&quot;.
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -190,4 +198,3 @@ export default function AgentsPage() {
         </div>
     );
 }
-

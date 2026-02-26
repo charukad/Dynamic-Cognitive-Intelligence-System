@@ -8,6 +8,14 @@ import * as THREE from 'three';
 // Simulate active connections
 const CONNECTION_COUNT = 5;
 
+interface SynapseConnection {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    mid: THREE.Vector3;
+    color: string;
+    id: number;
+}
+
 // Helper to get random point in sphere
 function getRandomPoint() {
     const r = 20 * Math.cbrt(Math.random());
@@ -23,7 +31,7 @@ function getRandomPoint() {
 export function SynapseSystem() {
     // We'll regenerate connections every few seconds for visual effect
     // In real app, this would be driven by Socket.io events
-    const [connections, setConnections] = useState(() =>
+    const [connections, setConnections] = useState<SynapseConnection[]>(() =>
         Array.from({ length: CONNECTION_COUNT }).map(() => ({
             start: getRandomPoint(),
             end: getRandomPoint(),
@@ -34,7 +42,7 @@ export function SynapseSystem() {
     );
 
     // Animation refs
-    const linesRef = useRef<Array<any>>([]);
+    const linesRef = useRef<Array<{ material?: { dashOffset?: number } } | null>>([]);
 
     // Re-roll connections periodically
     useFrame((state, delta) => {

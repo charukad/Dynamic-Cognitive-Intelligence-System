@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Metacognition Dashboard - Advanced Intelligence Visualization
  * 
@@ -10,22 +12,21 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Brain,
     Lightbulb,
     GitMerge,
     Clock,
-    TrendingUp,
     AlertTriangle,
     CheckCircle2,
     XCircle,
-    Timer
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 
 // ============================================================================
 // Types
@@ -56,6 +57,18 @@ interface TemporalStats {
     avg_fact_confidence: number;
 }
 
+interface ProofResult {
+    proved: boolean;
+    proof_steps?: string[];
+}
+
+interface TabButtonProps {
+    active: boolean;
+    onClick: () => void;
+    icon: React.ReactNode;
+    label: string;
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -74,20 +87,13 @@ export function MetacognitionDashboard() {
     const [neuroStats, setNeuroStats] = useState<NeurosymbolicStats | null>(null);
     const [query, setQuery] = useState('');
     const [facts, setFacts] = useState('');
-    const [proofResult, setProofResult] = useState<any>(null);
+    const [proofResult, setProofResult] = useState<ProofResult | null>(null);
 
     // Temporal state
     const [temporalStats, setTemporalStats] = useState<TemporalStats | null>(null);
-    const [timeline, setTimeline] = useState<any[]>([]);
 
     // Fetch stats
-    useEffect(() => {
-        fetchStats();
-        const interval = setInterval(fetchStats, 10000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
             const [neuroRes, tempRes] = await Promise.all([
                 apiClient.get('/v1/intelligence/neurosymbolic/stats'),
@@ -99,7 +105,21 @@ export function MetacognitionDashboard() {
         } catch (error) {
             console.error('Failed to fetch stats:', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchStats();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchStats();
+        }, 10000);
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchStats]);
 
     const handleAnalyzeReasoning = async () => {
         if (!reasoning || !conclusion) return;
@@ -139,16 +159,16 @@ export function MetacognitionDashboard() {
     };
 
     return (
-        <div className="h-full w-full bg-black/50 rounded-lg overflow-hidden flex flex-col">
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-[radial-gradient(circle_at_top,_rgba(217,70,239,0.13),_transparent_44%),linear-gradient(180deg,rgba(17,6,31,0.96),rgba(9,19,36,0.8))] shadow-[0_22px_64px_rgba(0,0,0,0.45)] flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <div className="border-b border-fuchsia-500/15 bg-black/25 p-4 backdrop-blur-md md:p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
                     <Brain className="h-5 w-5 text-purple-400" />
                     Metacognition & Advanced Intelligence
                 </h2>
 
                 {/* Tabs */}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <TabButton
                         active={activeTab === 'mirror'}
                         onClick={() => setActiveTab('mirror')}
@@ -171,7 +191,7 @@ export function MetacognitionDashboard() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 md:p-5">
                 <AnimatePresence mode="wait">
                     {activeTab === 'mirror' && (
                         <motion.div
@@ -181,7 +201,7 @@ export function MetacognitionDashboard() {
                             exit={{ opacity: 0, x: 20 }}
                             className="space-y-4"
                         >
-                            <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="rounded-xl border border-fuchsia-500/12 bg-slate-950/55 p-4 md:p-5">
                                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                                     <Brain className="h-4 w-4 text-purple-400" />
                                     Self-Reflection Analysis
@@ -194,7 +214,7 @@ export function MetacognitionDashboard() {
                                             value={reasoning}
                                             onChange={(e) => setReasoning(e.target.value)}
                                             placeholder="Describe your reasoning process..."
-                                            className="min-h-[100px]"
+                                            className="min-h-[110px] border-fuchsia-400/20 bg-black/30"
                                         />
                                     </div>
 
@@ -205,6 +225,7 @@ export function MetacognitionDashboard() {
                                             onChange={(e) => setConclusion(e.target.value)}
                                             placeholder="What did you conclude?"
                                             rows={2}
+                                            className="border-fuchsia-400/20 bg-black/30"
                                         />
                                     </div>
 
@@ -225,7 +246,7 @@ export function MetacognitionDashboard() {
                                     <Button
                                         onClick={handleAnalyzeReasoning}
                                         disabled={isAnalyzing}
-                                        className="w-full"
+                                        className="w-full bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600 hover:from-fuchsia-500 hover:via-purple-500 hover:to-cyan-500"
                                     >
                                         {isAnalyzing ? 'Analyzing...' : 'Analyze Reasoning'}
                                     </Button>
@@ -237,7 +258,7 @@ export function MetacognitionDashboard() {
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="bg-gray-900/50 rounded-lg p-4 border border-purple-500/30"
+                                    className="rounded-xl border border-fuchsia-500/28 bg-slate-950/55 p-4 md:p-5"
                                 >
                                     <h4 className="text-white font-semibold mb-3">Self-Critique</h4>
 
@@ -305,7 +326,7 @@ export function MetacognitionDashboard() {
                         >
                             {/* Stats */}
                             {neuroStats && (
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                     <StatCard label="Rules" value={neuroStats.total_rules} color="text-blue-400" />
                                     <StatCard label="Patterns" value={neuroStats.total_patterns} color="text-purple-400" />
                                     <StatCard label="Facts" value={neuroStats.total_facts} color="text-green-400" />
@@ -313,7 +334,7 @@ export function MetacognitionDashboard() {
                             )}
 
                             {/* Proof Interface */}
-                            <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="rounded-xl border border-cyan-500/15 bg-slate-950/55 p-4 md:p-5">
                                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                                     <GitMerge className="h-4 w-4 text-blue-400" />
                                     Logical Proof Engine
@@ -322,12 +343,11 @@ export function MetacognitionDashboard() {
                                 <div className="space-y-3">
                                     <div>
                                         <label className="text-sm text-gray-400 mb-1 block">Goal to Prove</label>
-                                        <input
-                                            type="text"
+                                        <Input
                                             value={query}
                                             onChange={(e) => setQuery(e.target.value)}
                                             placeholder="e.g., Q"
-                                            className="w-full bg-black/30 border border-gray-700 rounded px-3 py-2 text-white"
+                                            className="border-cyan-400/20 bg-black/30"
                                         />
                                     </div>
 
@@ -338,10 +358,11 @@ export function MetacognitionDashboard() {
                                             onChange={(e) => setFacts(e.target.value)}
                                             placeholder="P\nP implies Q"
                                             rows={4}
+                                            className="border-cyan-400/20 bg-black/30"
                                         />
                                     </div>
 
-                                    <Button onClick={handleProveGoal} className="w-full">
+                                    <Button onClick={handleProveGoal} className="w-full bg-gradient-to-r from-blue-600 via-cyan-600 to-indigo-600 hover:from-blue-500 hover:via-cyan-500 hover:to-indigo-500">
                                         Prove Goal
                                     </Button>
                                 </div>
@@ -352,7 +373,7 @@ export function MetacognitionDashboard() {
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`bg-gray-900/50 rounded-lg p-4 border ${proofResult.proved ? 'border-green-500/30' : 'border-red-500/30'
+                                    className={`rounded-xl p-4 md:p-5 border bg-slate-950/55 ${proofResult.proved ? 'border-green-500/30' : 'border-red-500/30'
                                         }`}
                                 >
                                     <div className="flex items-center gap-2 mb-3">
@@ -386,14 +407,14 @@ export function MetacognitionDashboard() {
                         >
                             {/* Stats */}
                             {temporalStats && (
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                     <StatCard label="Total Facts" value={temporalStats.total_facts} color="text-cyan-400" />
                                     <StatCard label="Events" value={temporalStats.total_events} color="text-blue-400" />
                                     <StatCard label="Ongoing" value={temporalStats.ongoing_facts} color="text-green-400" />
                                 </div>
                             )}
 
-                            <div className="bg-gray-900/50 rounded-lg p-4">
+                            <div className="rounded-xl border border-cyan-500/15 bg-slate-950/55 p-4 md:p-5">
                                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-cyan-400" />
                                     Time-Aware Knowledge
@@ -415,13 +436,13 @@ export function MetacognitionDashboard() {
 // Helper Components
 // ============================================================================
 
-function TabButton({ active, onClick, icon, label }: any) {
+function TabButton({ active, onClick, icon, label }: TabButtonProps) {
     return (
         <button
             onClick={onClick}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${active
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all ${active
+                ? 'border border-fuchsia-400/40 bg-gradient-to-r from-fuchsia-600/90 to-cyan-600/90 text-white shadow-lg shadow-fuchsia-800/25'
+                : 'border border-white/10 bg-gray-800/55 text-gray-300 hover:border-fuchsia-400/30 hover:bg-gray-700/60'
                 }`}
         >
             {icon}
@@ -432,8 +453,8 @@ function TabButton({ active, onClick, icon, label }: any) {
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
     return (
-        <div className="bg-gray-900/50 rounded px-3 py-2">
-            <div className="text-xs text-gray-400 mb-1">{label}</div>
+        <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 transition-colors hover:border-fuchsia-400/25 hover:bg-slate-900/70">
+            <div className="mb-1 text-xs uppercase tracking-wide text-gray-400">{label}</div>
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
         </div>
     );

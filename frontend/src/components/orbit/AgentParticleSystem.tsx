@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Agent Particle System - 3D Visualization
  * 
@@ -15,15 +17,18 @@
  * - Optimized with frustum culling
  */
 
+'use client';
+
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useAgentStore } from '../../store/agentStore';
-import { Agent, AgentState } from '../../types/agent';
 
 // ============================================================================
 // Types
 // ============================================================================
+
+export type AgentState = 'idle' | 'thinking' | 'executing' | 'failed' | 'success';
 
 interface ParticleData {
     position: THREE.Vector3;
@@ -166,7 +171,6 @@ export function AgentParticleSystem({
     const timeRef = useRef(0);
 
     const { agents } = useAgentStore();
-    const { camera } = useThree();
 
     // ============================================================================
     // Geometry & Material (Memoized for performance)
@@ -193,10 +197,11 @@ export function AgentParticleSystem({
 
     useEffect(() => {
         // Create particle data for each agent
-        const newParticles: ParticleData[] = agents.slice(0, maxAgents).map((agent, index) => {
+        const agentsArray = Object.values(agents);
+        const newParticles: ParticleData[] = agentsArray.slice(0, maxAgents).map((agent, index) => {
             const position = ParticlePhysics.generateOrbitalPosition(
                 index,
-                Math.min(agents.length, maxAgents),
+                Math.min(agentsArray.length, maxAgents),
                 ORBIT_RADIUS,
                 0
             );
@@ -205,10 +210,10 @@ export function AgentParticleSystem({
                 position: position.clone(),
                 velocity: new THREE.Vector3(),
                 targetPosition: position.clone(),
-                color: STATE_COLORS[agent.state as keyof typeof STATE_COLORS] || STATE_COLORS.idle,
+                color: STATE_COLORS[(agent.status || 'idle') as keyof typeof STATE_COLORS] || STATE_COLORS.idle,
                 scale: 1.0,
                 agentId: agent.id,
-                state: agent.state as AgentState,
+                state: (agent.status || 'idle') as AgentState,
             };
         });
 
@@ -257,10 +262,11 @@ export function AgentParticleSystem({
             const particle = particles[i];
 
             // Find corresponding agent and update state
-            const agent = agents.find(a => a.id === particle.agentId);
+            const agent = agents[particle.agentId];
             if (agent) {
+                const agentState = (agent.status || 'idle') as AgentState;
                 // Update color based on agent state
-                const newColor = STATE_COLORS[agent.state as keyof typeof STATE_COLORS] || STATE_COLORS.idle;
+                const newColor = STATE_COLORS[agentState as keyof typeof STATE_COLORS] || STATE_COLORS.idle;
                 if (!particle.color.equals(newColor)) {
                     particle.color.lerp(newColor, 0.1); // Smooth color transition
                     meshRef.current.setColorAt(i, particle.color);
@@ -270,14 +276,15 @@ export function AgentParticleSystem({
                 particle.targetPosition = ParticlePhysics.generateOrbitalPosition(
                     i,
                     particles.length,
-                    ORBIT_RADIUS + (agent.state === 'executing' ? 1 : 0), // Expand when executing
+                    ORBIT_RADIUS + (agentState === 'executing' ? 1 : 0), // Expand when executing
                     timeRef.current
                 );
 
                 // Scale based on state
-                const targetScale = agent.state === 'executing' ? 1.5 :
-                    agent.state === 'thinking' ? 1.2 : 1.0;
+                const targetScale = agentState === 'executing' ? 1.5 :
+                    agentState === 'thinking' ? 1.2 : 1.0;
                 particle.scale += (targetScale - particle.scale) * 0.1;
+                particle.state = agentState;
             }
 
             // Apply physics
@@ -296,13 +303,6 @@ export function AgentParticleSystem({
             meshRef.current.instanceColor.needsUpdate = true;
         }
 
-        // Rotate camera slowly for dynamic view
-        const radius = 25;
-        const angle = timeRef.current * 0.1;
-        camera.position.x = Math.cos(angle) * radius;
-        camera.position.z = Math.sin(angle) * radius;
-        camera.position.y = 10;
-        camera.lookAt(0, 0, 0);
     });
 
     // ============================================================================
@@ -325,8 +325,6 @@ export function AgentParticleSystem({
 // ============================================================================
 
 export function ParticleSystemStats() {
-    const { agents } = useAgentStore();
-
     useFrame((state) => {
         // Log performance metrics in development
         if (process.env.NODE_ENV === 'development') {

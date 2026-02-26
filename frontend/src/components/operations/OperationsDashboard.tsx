@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Operations Dashboard - Production Monitoring & Health
  * 
@@ -11,9 +13,9 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Zap, Database, Shield, Clock, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity, Database, Shield, Clock, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 
@@ -55,6 +57,18 @@ interface CacheStats {
     };
 }
 
+interface LatencyPoint {
+    timestamp: string;
+    latency: number;
+}
+
+interface MetricCardProps {
+    label: string;
+    value: string;
+    icon: React.ReactNode;
+    color: string;
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -62,16 +76,10 @@ interface CacheStats {
 export function OperationsDashboard() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
-    const [latencyHistory, setLatencyHistory] = useState<any[]>([]);
+    const [latencyHistory, setLatencyHistory] = useState<LatencyPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 5000); // Every 5 seconds
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [overviewRes, cacheRes] = await Promise.all([
                 apiClient.get('/v1/monitoring/dashboard/overview'),
@@ -147,7 +155,21 @@ export function OperationsDashboard() {
             });
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchData();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchData();
+        }, 5000); // Every 5 seconds
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchData]);
 
     const handleClearCache = async () => {
         try {
@@ -179,11 +201,11 @@ export function OperationsDashboard() {
     const isHealthy = circuitState === 'closed';
 
     return (
-        <div className="h-full w-full bg-black/50 rounded-lg overflow-hidden flex flex-col">
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-cyan-500/20 bg-[radial-gradient(circle_at_top,_rgba(6,182,212,0.12),_transparent_38%),linear-gradient(180deg,rgba(0,8,18,0.94),rgba(1,19,33,0.78))] shadow-[0_22px_60px_rgba(0,0,0,0.45)] flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <div className="border-b border-cyan-500/15 bg-black/25 p-4 backdrop-blur-md md:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
                         <Activity className="h-5 w-5 text-green-400" />
                         Production Operations
                     </h2>
@@ -204,9 +226,9 @@ export function OperationsDashboard() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 md:space-y-5 md:p-5">
                 {/* Key Metrics */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <MetricCard
                         label="Avg Latency"
                         value={`${data.metrics.avg_latency_ms.toFixed(1)}ms`}
@@ -234,7 +256,7 @@ export function OperationsDashboard() {
                 </div>
 
                 {/* Latency Chart */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
+                <div className="rounded-xl border border-cyan-500/10 bg-slate-950/55 p-4 md:p-5">
                     <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-blue-400" />
                         Latency Over Time
@@ -251,9 +273,9 @@ export function OperationsDashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     {/* Circuit Breaker */}
-                    <div className="bg-gray-900/50 rounded-lg p-4">
+                    <div className="rounded-xl border border-cyan-500/10 bg-slate-950/55 p-4 md:p-5">
                         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                             <Shield className="h-4 w-4 text-yellow-400" />
                             Circuit Breaker
@@ -288,7 +310,7 @@ export function OperationsDashboard() {
                                 <Button
                                     onClick={handleResetCircuitBreaker}
                                     variant="outline"
-                                    className="w-full mt-2"
+                                    className="mt-2 w-full border-cyan-400/30 text-cyan-200 hover:border-cyan-300/60 hover:bg-cyan-500/10"
                                     size="sm"
                                 >
                                     Reset Circuit Breaker
@@ -298,7 +320,7 @@ export function OperationsDashboard() {
                     </div>
 
                     {/* Cache Performance */}
-                    <div className="bg-gray-900/50 rounded-lg p-4">
+                    <div className="rounded-xl border border-cyan-500/10 bg-slate-950/55 p-4 md:p-5">
                         <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                             <Database className="h-4 w-4 text-green-400" />
                             Cache Performance
@@ -340,7 +362,7 @@ export function OperationsDashboard() {
                             <Button
                                 onClick={handleClearCache}
                                 variant="outline"
-                                className="w-full mt-2"
+                                className="mt-2 w-full border-cyan-400/30 text-cyan-200 hover:border-cyan-300/60 hover:bg-cyan-500/10"
                                 size="sm"
                             >
                                 Clear Cache
@@ -357,14 +379,14 @@ export function OperationsDashboard() {
 // Helper Components
 // ============================================================================
 
-function MetricCard({ label, value, icon, color }: any) {
+function MetricCard({ label, value, icon, color }: MetricCardProps) {
     return (
-        <div className="bg-gray-900/50 rounded-lg p-3">
+        <div className="rounded-xl border border-white/8 bg-slate-950/55 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-400/25 hover:bg-slate-900/70">
             <div className="flex items-center gap-2 mb-1">
                 {icon}
-                <span className="text-xs text-gray-400">{label}</span>
+                <span className="text-xs uppercase tracking-wide text-gray-400">{label}</span>
             </div>
-            <div className={`text-2xl font-bold ${color}`}>{value}</div>
+            <div className={`text-2xl font-bold leading-none md:text-[1.65rem] ${color}`}>{value}</div>
         </div>
     );
 }

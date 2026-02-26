@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Multi-modal Viewer - Upload and Analyze Images/Audio
  * 

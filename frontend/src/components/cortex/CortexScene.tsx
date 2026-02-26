@@ -1,14 +1,18 @@
+'use client';
+
 /**
  * Cortex Scene - Knowledge Graph Visualization Container
  * 
  * Main scene component integrating all cortex visualization elements.
  */
 
+'use client';
+
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing';
 import { KnowledgeGraphRenderer, GraphStats } from './KnowledgeGraphRenderer';
-import { GraphNode, GraphEdge } from './ForceSimulation';
+import { GraphNode } from './ForceSimulation';
 import { useKnowledgeGraph } from '../../hooks/useKnowledgeGraph';
 import { useState } from 'react';
 
@@ -49,17 +53,7 @@ export function CortexScene() {
 
     if (loading) {
         return (
-            <div
-                style={{
-                    width: '100vw',
-                    height: '100vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#0a0a0a',
-                    color: 'white',
-                }}
-            >
+            <div className="flex h-full min-h-[540px] w-full items-center justify-center rounded-2xl border border-fuchsia-500/20 bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.12),_transparent_45%),linear-gradient(180deg,rgba(4,6,23,0.96),rgba(2,9,26,0.82))] text-slate-200 shadow-[0_22px_64px_rgba(0,0,0,0.45)]">
                 Loading knowledge graph...
             </div>
         );
@@ -67,25 +61,15 @@ export function CortexScene() {
 
     if (error) {
         return (
-            <div
-                style={{
-                    width: '100vw',
-                    height: '100vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#0a0a0a',
-                    color: '#ef5350',
-                }}
-            >
+            <div className="flex h-full min-h-[540px] w-full items-center justify-center rounded-2xl border border-rose-500/25 bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.12),_transparent_45%),linear-gradient(180deg,rgba(4,6,23,0.96),rgba(2,9,26,0.82))] text-rose-300 shadow-[0_22px_64px_rgba(0,0,0,0.45)]">
                 Error loading graph: {error}
             </div>
         );
     }
 
     return (
-        <div style={{ width: '100vw', height: '100vh', background: '#0a0a0a' }}>
-            <Canvas>
+        <div className="relative h-full min-h-[600px] w-full overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-[radial-gradient(circle_at_top,_rgba(192,132,252,0.16),_transparent_44%),linear-gradient(180deg,rgba(9,7,24,0.96),rgba(3,11,28,0.82))] shadow-[0_22px_64px_rgba(0,0,0,0.45)]">
+            <Canvas className="h-full w-full">
                 {/* Camera */}
                 <PerspectiveCamera makeDefault position={[0, 15, 30]} fov={60} />
 
@@ -131,23 +115,11 @@ export function CortexScene() {
 
             {/* Node Details Panel */}
             {selectedNode && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 20,
-                        right: 20,
-                        background: 'rgba(0,0,0,0.8)',
-                        color: 'white',
-                        padding: '15px 20px',
-                        borderRadius: 8,
-                        maxWidth: 300,
-                        fontFamily: 'system-ui',
-                    }}
-                >
-                    <h3 style={{ margin: '0 0 10px 0', fontSize: 16 }}>
+                <div className="absolute right-3 top-3 z-10 w-[min(320px,88vw)] rounded-xl border border-fuchsia-400/25 bg-slate-950/90 p-4 text-slate-100 backdrop-blur-md md:right-4 md:top-4">
+                    <h3 className="mb-2 text-base font-semibold">
                         {selectedNode.label}
                     </h3>
-                    <div style={{ fontSize: 12, color: '#aaa' }}>
+                    <div className="space-y-1 text-xs text-slate-400">
                         <div>Type: {selectedNode.type}</div>
                         <div>Cluster: {selectedNode.cluster || 'None'}</div>
                         <div>
@@ -159,15 +131,7 @@ export function CortexScene() {
                     </div>
                     <button
                         onClick={() => setSelectedNode(null)}
-                        style={{
-                            marginTop: 10,
-                            padding: '5px 10px',
-                            background: '#9c27b0',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                        }}
+                        className="mt-3 rounded-md border border-fuchsia-400/40 bg-fuchsia-600/80 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-fuchsia-500"
                     >
                         Close
                     </button>
@@ -176,20 +140,7 @@ export function CortexScene() {
 
             {/* Hover Tooltip */}
             {hoveredNode && !selectedNode && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: 20,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: 'rgba(0,0,0,0.9)',
-                        color: 'white',
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        pointerEvents: 'none',
-                    }}
-                >
+                <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-lg border border-fuchsia-400/20 bg-slate-950/90 px-3 py-1.5 text-xs text-slate-100 shadow-xl md:bottom-4">
                     {hoveredNode.label} ({hoveredNode.type})
                 </div>
             )}

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Orbit Scene - Main 3D Visualization Container
  * 
@@ -9,6 +11,8 @@
  * - Post-processing effects
  */
 
+'use client';
+
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -17,6 +21,7 @@ import { NeuralLink, useConnectionManager } from './NeuralLink';
 import { SynapseSystem } from './SynapseSystem';
 import { useAgentStore } from '../../store/agentStore';
 import { useEffect } from 'react';
+import * as THREE from 'three';
 
 // ============================================================================
 // Lighting Setup
@@ -65,7 +70,7 @@ export function OrbitScene() {
     useEffect(() => {
         const interval = setInterval(() => {
             // Randomly create connections between active agents
-            const activeAgents = agents.filter(a => a.state === 'executing');
+            const activeAgents = Object.values(agents).filter(a => a.status === 'active');
 
             if (activeAgents.length >= 2) {
                 const source = activeAgents[Math.floor(Math.random() * activeAgents.length)];
@@ -77,8 +82,8 @@ export function OrbitScene() {
                     addConnection(
                         source.id,
                         target.id,
-                        { x: 0, y: 0, z: 0 } as any,
-                        { x: 1, y: 1, z: 1 } as any,
+                        new THREE.Vector3(0, 0, 0),
+                        new THREE.Vector3(1, 1, 1),
                         Math.random()
                     );
                 }

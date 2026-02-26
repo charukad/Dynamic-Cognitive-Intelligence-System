@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Unified Analytics Dashboard
  * 
@@ -11,15 +13,15 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    AreaChart, Area, BarChart, Bar, LineChart, Line,
+    AreaChart, Area, LineChart, Line,
     PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import {
     TrendingUp, Award, Brain, Dna, Activity, Zap,
-    Database, Users, ThumbsUp, Clock, Target, Cpu
+    Database, ThumbsUp, Clock, Target, Cpu
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
@@ -62,34 +64,36 @@ interface SystemMetrics {
     };
 }
 
+interface TimeSeriesPoint {
+    time: string;
+    feedback: number;
+    memories: number;
+    generation: number;
+    latency: number;
+}
+
+interface MemoryDistributionDatum {
+    name: string;
+    value: number;
+    color: string;
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
 
 export function UnifiedAnalyticsDashboard() {
     const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-    const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
+    const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
 
-    useEffect(() => {
-        fetchMetrics();
-        const interval = setInterval(fetchMetrics, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchMetrics = async () => {
+    const fetchMetrics = useCallback(async () => {
         try {
             // Use unified analytics endpoint for efficiency
-            const [unifiedRes, memoryRes, evolutionRes] = await Promise.all([
-                apiClient.get('/v1/analytics/unified-dashboard'),
-                apiClient.get('/v1/memory/stats'),
-                apiClient.get('/v1/gaia/stats'),
-            ]);
+            const unifiedRes = await apiClient.get('/v1/analytics/unified-dashboard');
 
             const unified = unifiedRes.data || unifiedRes;
-            const memory = memoryRes.data || memoryRes;
-            const evolution = evolutionRes.data || evolutionRes;
 
             const metrics: SystemMetrics = {
                 rlhf: {
@@ -123,7 +127,9 @@ export function UnifiedAnalyticsDashboard() {
                     cache_hit_rate: unified.cache?.hit_rate || 0,
                     circuit_breaker_state: (() => {
                         const breakers = unified.circuit_breakers || {};
-                        const firstBreaker: any = Object.values(breakers)[0];
+                        const firstBreaker = Object.values(breakers)[0] as
+                            | { state?: string }
+                            | undefined;
                         return firstBreaker?.state || 'closed';
                     })(),
                     active_traces: 0,
@@ -149,7 +155,21 @@ export function UnifiedAnalyticsDashboard() {
             console.error('Failed to fetch unified metrics:', error);
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initialFetchTimer = setTimeout(() => {
+            void fetchMetrics();
+        }, 0);
+        const interval = setInterval(() => {
+            void fetchMetrics();
+        }, 5000);
+
+        return () => {
+            clearTimeout(initialFetchTimer);
+            clearInterval(interval);
+        };
+    }, [fetchMetrics]);
 
     if (isLoading || !metrics) {
         return (
@@ -230,11 +250,23 @@ export function UnifiedAnalyticsDashboard() {
 // Overview View
 // ============================================================================
 
-function OverviewView({ metrics, radarData, memoryDistribution, timeSeriesData }: any) {
+interface OverviewViewProps {
+    metrics: SystemMetrics;
+    radarData: Array<{ metric: string; value: number; fullMark: number }>;
+    memoryDistribution: MemoryDistributionDatum[];
+    timeSeriesData: TimeSeriesPoint[];
+}
+
+function OverviewView({
+    metrics,
+    radarData,
+    memoryDistribution,
+    timeSeriesData,
+}: OverviewViewProps) {
     return (
         <>
             {/* Key Performance Indicators */}
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
                 <KPICard
                     label="Feedback Score"
                     value={`${(metrics.rlhf.approval_rate * 100).toFixed(0)}%`}
@@ -279,7 +311,7 @@ function OverviewView({ metrics, radarData, memoryDistribution, timeSeriesData }
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {/* System Health Radar */}
                 <div className="bg-gray-900/50 rounded-lg p-4">
                     <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
@@ -320,7 +352,7 @@ function OverviewView({ metrics, radarData, memoryDistribution, timeSeriesData }
                                 outerRadius={80}
                                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             >
-                                {memoryDistribution.map((entry: any, index: number) => (
+                                {memoryDistribution.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
@@ -378,7 +410,12 @@ function OverviewView({ metrics, radarData, memoryDistribution, timeSeriesData }
 // Detailed View
 // ============================================================================
 
-function DetailedView({ metrics, timeSeriesData }: any) {
+interface DetailedViewProps {
+    metrics: SystemMetrics;
+    timeSeriesData: TimeSeriesPoint[];
+}
+
+function DetailedView({ metrics, timeSeriesData }: DetailedViewProps) {
     return (
         <>
             {/* RLHF Metrics */}
@@ -387,7 +424,7 @@ function DetailedView({ metrics, timeSeriesData }: any) {
                     <Award className="h-4 w-4 text-yellow-400" />
                     RLHF Metrics
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <MetricDetail label="Total Feedback" value={metrics.rlhf.total_feedback} />
                     <MetricDetail label="Approval Rate" value={`${(metrics.rlhf.approval_rate * 100).toFixed(1)}%`} />
                     <MetricDetail label="Avg Rating" value={metrics.rlhf.avg_rating.toFixed(2)} />
@@ -400,7 +437,7 @@ function DetailedView({ metrics, timeSeriesData }: any) {
                     <Dna className="h-4 w-4 text-pink-400" />
                     Evolution Progress
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <MetricDetail label="Generation" value={`#${metrics.evolution.current_generation}`} />
                     <MetricDetail label="Best Fitness" value={metrics.evolution.best_fitness.toFixed(3)} />
                     <MetricDetail label="Avg Fitness" value={metrics.evolution.avg_fitness.toFixed(3)} />
@@ -418,7 +455,7 @@ function DetailedView({ metrics, timeSeriesData }: any) {
             </div>
 
             {/* Performance & Operations */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="bg-gray-900/50 rounded-lg p-4">
                     <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                         <Cpu className="h-4 w-4 text-blue-400" />
@@ -451,7 +488,15 @@ function DetailedView({ metrics, timeSeriesData }: any) {
 // Helper Components
 // ============================================================================
 
-function KPICard({ label, value, icon, trend, color }: any) {
+interface KPICardProps {
+    label: string;
+    value: string;
+    icon: React.ReactNode;
+    trend: string;
+    color: string;
+}
+
+function KPICard({ label, value, icon, trend, color }: KPICardProps) {
     return (
         <div className="bg-gray-900/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
@@ -464,7 +509,7 @@ function KPICard({ label, value, icon, trend, color }: any) {
     );
 }
 
-function MetricDetail({ label, value }: { label: string; value: any }) {
+function MetricDetail({ label, value }: { label: string; value: string | number }) {
     return (
         <div className="flex justify-between items-center">
             <span className="text-sm text-gray-400">{label}:</span>

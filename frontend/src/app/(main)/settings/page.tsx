@@ -11,7 +11,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Save, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
 
 interface SystemSettings {
     llm_provider: 'openai' | 'anthropic' | 'local' | 'vllm';
@@ -70,12 +69,12 @@ export default function SettingsPage() {
         local: ['custom-model-1', 'custom-model-2'],
     };
 
-    const handleSystemSettingChange = (key: keyof SystemSettings, value: any) => {
+    const handleSystemSettingChange = <K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) => {
         setSystemSettings(prev => ({ ...prev, [key]: value }));
         setSaveSuccess(false);
     };
 
-    const handlePerformanceSettingChange = (key: keyof PerformanceSettings, value: any) => {
+    const handlePerformanceSettingChange = <K extends keyof PerformanceSettings>(key: K, value: PerformanceSettings[K]) => {
         setPerformanceSettings(prev => ({ ...prev, [key]: value }));
         setSaveSuccess(false);
     };
@@ -94,8 +93,8 @@ export default function SettingsPage() {
 
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
-        } catch (err: any) {
-            setError(err.message || 'Failed to save settings');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save settings');
         } finally {
             setSaving(false);
         }
@@ -115,7 +114,7 @@ export default function SettingsPage() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8">
+        <div className="h-full min-h-full bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/20 p-6 md:p-8">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
@@ -150,8 +149,8 @@ export default function SettingsPage() {
                             </label>
                             <select
                                 value={systemSettings.llm_provider}
-                                onChange={(e) => handleSystemSettingChange('llm_provider', e.target.value as any)}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                onChange={(e) => handleSystemSettingChange('llm_provider', e.target.value as SystemSettings['llm_provider'])}
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
                             >
                                 {llmProviders.map(provider => (
                                     <option key={provider.value} value={provider.value} className="bg-gray-800">
@@ -169,7 +168,7 @@ export default function SettingsPage() {
                             <select
                                 value={systemSettings.model_name}
                                 onChange={(e) => handleSystemSettingChange('model_name', e.target.value)}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
                             >
                                 {modelsByProvider[systemSettings.llm_provider].map(model => (
                                     <option key={model} value={model} className="bg-gray-800">
@@ -211,7 +210,7 @@ export default function SettingsPage() {
                                 step="256"
                                 value={systemSettings.max_tokens}
                                 onChange={(e) => handleSystemSettingChange('max_tokens', parseInt(e.target.value))}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
                             />
                         </div>
 
@@ -265,7 +264,7 @@ export default function SettingsPage() {
                                 value={performanceSettings.cache_ttl}
                                 onChange={(e) => handlePerformanceSettingChange('cache_ttl', parseInt(e.target.value))}
                                 disabled={!performanceSettings.cache_enabled}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 disabled:opacity-50"
                             />
                         </div>
 
@@ -280,7 +279,7 @@ export default function SettingsPage() {
                                 max="50"
                                 value={performanceSettings.max_concurrent_requests}
                                 onChange={(e) => handlePerformanceSettingChange('max_concurrent_requests', parseInt(e.target.value))}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
                             />
                         </div>
 
@@ -295,7 +294,7 @@ export default function SettingsPage() {
                                 max="300"
                                 value={performanceSettings.request_timeout}
                                 onChange={(e) => handlePerformanceSettingChange('request_timeout', parseInt(e.target.value))}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
                             />
                         </div>
                     </div>
@@ -305,7 +304,7 @@ export default function SettingsPage() {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-4 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-semibold py-4 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Save size={20} />
                     {saving ? 'Saving...' : 'Save Settings'}

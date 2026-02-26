@@ -36,12 +36,13 @@ const mockGetContext = vi.fn(() => ({
     drawingBufferHeight: 600,
 }));
 
-HTMLCanvasElement.prototype.getContext = mockGetContext;
+HTMLCanvasElement.prototype.getContext =
+    mockGetContext as unknown as HTMLCanvasElement['getContext'];
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockImplementation(query => ({
+    value: vi.fn().mockImplementation((query: string) => ({
         matches: false,
         media: query,
         onchange: null,

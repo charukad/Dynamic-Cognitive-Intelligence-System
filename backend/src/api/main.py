@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["health"])
     
     # Import and include v1 routers
-    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics
+    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics, dev_seed
     app.include_router(agents.router, prefix=settings.api_v1_prefix)
     app.include_router(tasks.router, prefix=settings.api_v1_prefix)
     app.include_router(query.router, prefix=settings.api_v1_prefix)
@@ -79,6 +79,8 @@ def create_app() -> FastAPI:
     app.include_router(causal.router, prefix=settings.api_v1_prefix)  # Causal Reasoning
     app.include_router(gnn.router, prefix=settings.api_v1_prefix)  # Graph Neural Networks
     app.include_router(graph.router, prefix=settings.api_v1_prefix) # Graph router
+    app.include_router(dev_seed.router, prefix=settings.api_v1_prefix)  # Development seeding
+
     
     # WebSocket endpoint - native FastAPI WebSocket (not Socket.IO)
     app.include_router(websocket.router)  # Endpoint: /ws/ai-services

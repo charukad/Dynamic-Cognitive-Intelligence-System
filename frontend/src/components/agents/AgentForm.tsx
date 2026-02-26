@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * AgentForm Component
  * 
@@ -35,9 +37,7 @@ const agentFormSchema = z.object({
         'researcher',
         'code_generator',
         'general'
-    ], {
-        errorMap: () => ({ message: 'Please select a valid agent type' })
-    }),
+    ]),
 
     system_prompt: z.string()
         .min(20, 'System prompt must be at least 20 characters')
@@ -47,12 +47,11 @@ const agentFormSchema = z.object({
         .min(1, 'Agent must have at least one capability')
         .max(10, 'Maximum 10 capabilities allowed'),
 
-    status: z.enum(['active', 'inactive', 'training']).default('active'),
+    status: z.enum(['active', 'inactive', 'training']),
 
     temperature: z.number()
         .min(0, 'Temperature must be between 0 and 2')
-        .max(2, 'Temperature must be between 0 and 2')
-        .default(0.7),
+        .max(2, 'Temperature must be between 0 and 2'),
 });
 
 export type AgentFormData = z.infer<typeof agentFormSchema>;

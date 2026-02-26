@@ -17,3 +17,16 @@ export interface AgentStore {
     setActiveAgent: (id: string) => void;
     getAgent: (id: string) => Agent | undefined;
 }
+
+export interface Task {
+    id: string;
+    title?: string;
+    description: string;
+    agentId?: string;
+    assignedTo?: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    createdAt?: number;
+    completedAt?: number;
+    result?: string;
+    subtasks?: Task[];
+}

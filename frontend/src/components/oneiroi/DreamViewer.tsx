@@ -1,13 +1,18 @@
-"""
-Dream Viewer Component - Real - time Dream Cycle Visualization
+'use client';
 
-Displays ongoing and completed dream cycles with phase progression,
-    insight extraction, and performance metrics.
-"""
+/**
+ * Dream Viewer Component - Real - time Dream Cycle Visualization
+ * 
+ * Displays ongoing and completed dream cycles with phase progression,
+ * insight extraction, and performance metrics.
+ */
 
-import { use State, useEffect } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import './DreamViewer.css';
+import { apiPath } from '@/lib/runtime';
 
 // ============================================================================
 // Types
@@ -41,7 +46,7 @@ interface Insight {
 export function DreamViewer({ agentId }: { agentId: string }) {
     const [activeCycle, setActiveCycle] = useState<DreamCycle | null>(null);
     const [insights, setInsights] = useState<Insight[]>([]);
-    const [performanceHistory, setPerformanceHistory] = useState<number[]>([]);
+    const [performanceHistory] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Fetch dream status
@@ -50,7 +55,7 @@ export function DreamViewer({ agentId }: { agentId: string }) {
             try {
                 // Get latest insights
                 const insightsRes = await fetch(
-                    `http://localhost:8008/api/v1/oneiroi/insights/${agentId}?limit=20`
+                    apiPath(`/v1/oneiroi/insights/${agentId}?limit=20`)
                 );
                 const insightsData = await insightsRes.json();
                 setInsights(insightsData.insights);
@@ -355,11 +360,11 @@ function PerformanceChart({ history }: { history: number[] }) {
 
 async function initiateDream(
     agentId: string,
-    setActiveCycle: (cycle: DreamCycle) => void
+    setActiveCycle: (cycle: DreamCycle | null) => void
 ) {
     try {
         const response = await fetch(
-            `http://localhost:8008/api/v1/oneiroi/dream/initiate/${agentId}`,
+            apiPath(`/v1/oneiroi/dream/initiate/${agentId}`),
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -376,7 +381,7 @@ async function initiateDream(
         const cycleId = data.cycle_id;
         const pollStatus = async () => {
             const statusRes = await fetch(
-                `http://localhost:8008/api/v1/oneiroi/dream/${cycleId}`
+                apiPath(`/v1/oneiroi/dream/${cycleId}`)
             );
             const cycleData = await statusRes.json();
             setActiveCycle(cycleData);

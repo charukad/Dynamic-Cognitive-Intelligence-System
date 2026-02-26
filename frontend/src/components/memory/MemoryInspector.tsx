@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * MemoryInspector Component
  * 
@@ -18,9 +20,6 @@ import {
     Brain,
     Clock,
     Search,
-    Filter,
-    Download,
-    RefreshCw,
     Network,
     Activity
 } from 'lucide-react';
@@ -41,7 +40,7 @@ interface GraphNode {
     id: string;
     label: string;
     type: string;
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
     importance: number;
 }
 
@@ -49,7 +48,7 @@ interface GraphEdge {
     source: string;
     target: string;
     relationship: string;
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
 }
 
 interface KnowledgeGraph {
@@ -149,19 +148,14 @@ export function MemoryInspector() {
                 {
                     selector: 'node',
                     style: {
-                        'background-color': (ele: any) => {
-                            const importance = ele.data('importance');
-                            if (importance > 0.8) return '#10b981';
-                            if (importance > 0.6) return '#3b82f6';
-                            return '#6b7280';
-                        },
+                        'background-color': 'mapData(importance, 0, 1, #6b7280, #10b981)',
                         'label': 'data(label)',
                         'color': '#fff',
                         'text-valign': 'center',
                         'text-halign': 'center',
                         'font-size': '12px',
-                        'width': (ele: any) => 30 + (ele.data('importance') * 30),
-                        'height': (ele: any) => 30 + (ele.data('importance') * 30),
+                        'width': 'mapData(importance, 0, 1, 30, 60)',
+                        'height': 'mapData(importance, 0, 1, 30, 60)',
                     },
                 },
                 {
@@ -188,7 +182,7 @@ export function MemoryInspector() {
                 fit: true,
                 padding: 50,
                 nodeSeparation: 100,
-            } as any,
+            } as unknown as cytoscape.LayoutOptions,
         });
 
         // Add interactivity
@@ -213,17 +207,17 @@ export function MemoryInspector() {
     }
 
     return (
-        <div className="h-full w-full bg-black/50 rounded-lg overflow-hidden flex flex-col">
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.14),_transparent_42%),linear-gradient(180deg,rgba(15,8,30,0.96),rgba(9,16,34,0.78))] shadow-[0_22px_64px_rgba(0,0,0,0.48)] flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-black/30 backdrop-blur-sm">
-                <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+            <div className="border-b border-fuchsia-500/15 bg-black/25 p-4 backdrop-blur-md md:p-5">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
                     <Brain className="h-5 w-5 text-purple-400" />
                     Memory Inspector
                 </h2>
 
                 {/* Stats */}
                 {stats && (
-                    <div className="grid grid-cols-6 gap-2">
+                    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6">
                         <StatCard label="Total" value={stats.total_memories} color="text-blue-400" />
                         <StatCard label="Episodic" value={stats.episodic_count} color="text-green-400" />
                         <StatCard label="Semantic" value={stats.semantic_count} color="text-purple-400" />
@@ -234,7 +228,7 @@ export function MemoryInspector() {
                 )}
 
                 {/* View Tabs */}
-                <div className="flex gap-2 mt-4">
+                <div className="mt-4 flex flex-wrap gap-2">
                     <TabButton
                         active={activeView === 'graph'}
                         onClick={() => setActiveView('graph')}
@@ -263,13 +257,13 @@ export function MemoryInspector() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-black/15">
                 {activeView === 'graph' && (
-                    <div ref={cyContainerRef} className="w-full h-full bg-gray-950" />
+                    <div ref={cyContainerRef} className="h-full w-full bg-gradient-to-b from-slate-950/80 to-black/80" />
                 )}
 
                 {activeView === 'timeline' && (
-                    <div className="p-4 h-full overflow-y-auto">
+                    <div className="h-full overflow-y-auto p-4 md:p-5">
                         <div className="space-y-3">
                             {timeline.map((event) => (
                                 <TimelineEventCard key={event.id} event={event} />
@@ -279,17 +273,20 @@ export function MemoryInspector() {
                 )}
 
                 {activeView === 'search' && (
-                    <div className="p-4">
-                        <div className="flex gap-2 mb-4">
+                    <div className="p-4 md:p-5">
+                        <div className="mb-4 rounded-xl border border-fuchsia-500/15 bg-slate-950/55 p-3 md:p-4">
+                            <div className="mb-3 text-sm font-medium text-slate-200">Search Across Episodic + Semantic Memory</div>
+                            <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
                                 placeholder="Search memories..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="flex-1"
                             />
-                            <Button variant="outline">
+                            <Button variant="outline" className="border-fuchsia-400/30 text-fuchsia-200 hover:border-fuchsia-300/60 hover:bg-fuchsia-500/10 sm:w-auto">
                                 <Search size={16} />
                             </Button>
+                            </div>
                         </div>
                         <div className="text-gray-400 text-sm">
                             Enter a query to search across all memory types
@@ -311,8 +308,8 @@ export function MemoryInspector() {
 
 function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
     return (
-        <div className="bg-gray-900/50 rounded px-2 py-1.5">
-            <div className="text-xs text-gray-400">{label}</div>
+        <div className="rounded-lg border border-white/10 bg-slate-950/55 px-2 py-1.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-fuchsia-400/25 hover:bg-slate-900/70">
+            <div className="text-xs uppercase tracking-wide text-gray-400">{label}</div>
             <div className={`text-sm font-bold ${color}`}>{value}</div>
         </div>
     );
@@ -333,11 +330,11 @@ function TabButton({
         <button
             onClick={onClick}
             className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+                flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap
                 transition-all duration-200
                 ${active
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                    : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
+                    ? 'border border-fuchsia-400/40 bg-gradient-to-r from-fuchsia-600/90 to-indigo-500/90 text-white shadow-lg shadow-fuchsia-700/30'
+                    : 'border border-white/10 bg-gray-800/50 text-gray-300 hover:border-fuchsia-400/30 hover:bg-gray-700/50'
                 }
             `}
         >
@@ -352,7 +349,7 @@ function TimelineEventCard({ event }: { event: TimelineEvent }) {
         <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gray-900/50 rounded-lg p-4 border border-gray-800"
+            className="rounded-xl border border-white/10 bg-slate-950/55 p-4 transition-colors hover:border-fuchsia-400/20 hover:bg-slate-900/75"
         >
             <div className="flex items-start justify-between mb-2">
                 <div className="text-xs text-gray-400">
@@ -363,9 +360,9 @@ function TimelineEventCard({ event }: { event: TimelineEvent }) {
                 </div>
             </div>
             <div className="text-white mb-2">{event.content}</div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
                 {event.tags.map((tag) => (
-                    <span key={tag} className="text-xs bg-purple-900/30 text-purple-300 px-2 py-0.5 rounded">
+                    <span key={tag} className="rounded-full border border-fuchsia-400/20 bg-fuchsia-950/30 px-2 py-0.5 text-xs text-fuchsia-200">
                         {tag}
                     </span>
                 ))}
