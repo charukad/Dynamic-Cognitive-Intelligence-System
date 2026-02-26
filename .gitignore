@@ -20,52 +20,92 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.log
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+.dmypy.json
+dmypy.json
 
-# Virtual environments
-venv/
-env/
-ENV/
-.venv
-
-# Node.js
+# Node.js / Frontend
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
 .next/
 out/
 .cache/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
+.turbo/
+*.tsbuildinfo
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 .DS_Store
 
-# Docker
-*.log
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Database
 *.db
 *.sqlite
+*.sqlite3
+data/
+neo4j/
+
+# Redis
+dump.rdb
+
+# Docker
+.dockerignore
 
 # Terraform
 .terraform/
 *.tfstate
 *.tfstate.backup
 
-# Testing
-.coverage
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+secrets/
+*.pem
+*.key
+*.crt
+
+# Test coverage
 coverage/
+.coverage
+htmlcov/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
