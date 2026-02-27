@@ -1,0 +1,42 @@
+# Dockerfile.prod - Frontend Production Build
+# Pre-compiles all pages for instant navigation
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* pnpm-lock.yaml* ./
+
+RUN if [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm install; \
+    elif [ -f package-lock.json ]; then npm install; \
+    else echo "No lockfile found" && exit 1; \
+    fi
+
+# Copy source code
+COPY . .
+
+# Set build-time env vars
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the application (pre-compiles all pages)
+RUN npm run build
+
+# --- Production runner ---
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy only what's needed to run
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.ts ./
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

@@ -30,7 +30,8 @@ from src.api.routes import (
     gaia_stats,
     tournaments,
     chat_history,
-    chat_sessions
+    chat_sessions,
+    chat_feedback,
 )
 from src.api.websocket.ai_services_ws import (
     ai_services_websocket_endpoint,
@@ -101,6 +102,7 @@ app.include_router(chat.router, prefix="/api/v1")
 # Chat History
 app.include_router(chat_history.router, prefix="/api/v1")
 app.include_router(chat_sessions.router, prefix="/api/v1")
+app.include_router(chat_feedback.router, prefix="/api/v1")
 
 # Analytics
 app.include_router(analytics.router, prefix="/api/v1")

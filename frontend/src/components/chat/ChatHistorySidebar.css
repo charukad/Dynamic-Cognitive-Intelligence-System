@@ -98,11 +98,10 @@
 }
 
 .session-item {
-    padding: 0.75rem;
+    padding: 0.25rem;
     margin-bottom: 0.5rem;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -113,6 +112,28 @@
 .session-item:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: translateX(4px);
+}
+
+.session-button {
+    flex: 1;
+    min-width: 0;
+    display: block;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.session-button:focus-visible,
+.delete-btn:focus-visible,
+.collapse-btn:focus-visible,
+.expand-btn:focus-visible,
+.new-chat-sidebar-btn:focus-visible {
+    outline: 2px solid rgba(102, 126, 234, 0.8);
+    outline-offset: 2px;
 }
 
 .session-item.active {
@@ -152,6 +173,10 @@
 }
 
 .session-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.session-item:focus-within .delete-btn {
     opacity: 1;
 }
 

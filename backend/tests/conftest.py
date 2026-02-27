@@ -88,9 +88,12 @@ def mock_redis_client() -> AsyncMock:
 @pytest.fixture(autouse=True)
 def clear_repositories():
     """Clear in-memory repositories before each test."""
-    agent_repository._storage.clear()
-    task_repository._storage.clear()
-    memory_repository._storage.clear()
+    if hasattr(agent_repository, "_storage"):
+        agent_repository._storage.clear()
+    if hasattr(task_repository, "_storage"):
+        task_repository._storage.clear()
+    if hasattr(memory_repository, "_storage"):
+        memory_repository._storage.clear()
     
     # Reset RLHF feedback manager
     try:
@@ -112,9 +115,12 @@ def clear_repositories():
     
     yield
     
-    agent_repository._storage.clear()
-    task_repository._storage.clear()
-    memory_repository._storage.clear()
+    if hasattr(agent_repository, "_storage"):
+        agent_repository._storage.clear()
+    if hasattr(task_repository, "_storage"):
+        task_repository._storage.clear()
+    if hasattr(memory_repository, "_storage"):
+        memory_repository._storage.clear()
 
 
 @pytest.fixture

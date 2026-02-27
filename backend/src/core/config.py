@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # Chat request controls
+    chat_rate_limit_window_seconds: int = 60
+    chat_session_read_rate_limit_per_window: int = 120
+    chat_session_write_rate_limit_per_window: int = 60
+    chat_message_read_rate_limit_per_window: int = 240
+    chat_message_write_rate_limit_per_window: int = 60
+    chat_message_send_rate_limit_per_window: int = 30
+    chat_feedback_rate_limit_per_window: int = 60
+    chat_websocket_send_rate_limit_per_window: int = 30
+
     @property
     def chroma_url(self) -> str:
         """Get ChromaDB URL."""

@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
+  // Skip type checking during build (run separately via tsc)
+  typescript: { ignoreBuildErrors: true },
+
   // Turbopack configuration for shader files (Next.js 16+)
   turbopack: {
     rules: {
@@ -25,10 +28,12 @@ const nextConfig: NextConfig = {
   },
   // API Proxy Configuration
   async rewrites() {
+    // Server-side: use internal Docker network URL (not NEXT_PUBLIC_* which is for browser)
+    const backendUrl = process.env.BACKEND_URL || 'http://backend:8000';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8008/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

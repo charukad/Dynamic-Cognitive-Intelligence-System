@@ -107,6 +107,70 @@ class ChromaDBClient:
         response.raise_for_status()
         return response.json()
 
+    async def query_documents(
+        self,
+        collection_name: str,
+        query_embeddings: list[list[float]],
+        n_results: int = 10,
+        where: Optional[dict[str, Any]] = None,
+    ) -> list[dict[str, Any]]:
+        """Query collection and normalize results into document objects."""
+        if not self.client:
+            raise RuntimeError("Client not connected")
+
+        payload: dict[str, Any] = {
+            "query_embeddings": query_embeddings,
+            "n_results": n_results,
+        }
+        if where:
+            payload["where"] = where
+
+        response = await self.client.post(
+            f"/api/v2/collections/{collection_name}/query",
+            json=payload,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        ids = data.get("ids", [[]])
+        documents = data.get("documents", [[]])
+        metadatas = data.get("metadatas", [[]])
+        distances = data.get("distances", [[]])
+
+        normalized: list[dict[str, Any]] = []
+        first_ids = ids[0] if ids else []
+        first_docs = documents[0] if documents else []
+        first_metadata = metadatas[0] if metadatas else []
+        first_distances = distances[0] if distances else []
+
+        for index, doc_id in enumerate(first_ids):
+            normalized.append(
+                {
+                    "id": doc_id,
+                    "content": first_docs[index] if index < len(first_docs) else "",
+                    "metadata": first_metadata[index] if index < len(first_metadata) else {},
+                    "distance": first_distances[index] if index < len(first_distances) else None,
+                }
+            )
+
+        return normalized
+
+    async def delete_documents(
+        self,
+        collection_name: str,
+        ids: list[str],
+    ) -> dict[str, Any]:
+        """Delete documents by IDs."""
+        if not self.client:
+            raise RuntimeError("Client not connected")
+
+        response = await self.client.post(
+            f"/api/v2/collections/{collection_name}/delete",
+            json={"ids": ids},
+        )
+        response.raise_for_status()
+        return response.json()
+
 
 # Global instance
 chroma_client = ChromaDBClient()

@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["health"])
     
     # Import and include v1 routers
-    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics, dev_seed
+    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics, dev_seed, chat_history, chat_sessions, chat_feedback
     app.include_router(agents.router, prefix=settings.api_v1_prefix)
     app.include_router(tasks.router, prefix=settings.api_v1_prefix)
     app.include_router(query.router, prefix=settings.api_v1_prefix)
@@ -74,6 +74,9 @@ def create_app() -> FastAPI:
     from src.api.routes import gaia
     app.include_router(gaia.router, prefix=settings.api_v1_prefix)  # General GAIA stats
     app.include_router(analytics.router, prefix=settings.api_v1_prefix)  # Unified analytics
+    app.include_router(chat_history.router, prefix=settings.api_v1_prefix)
+    app.include_router(chat_sessions.router, prefix=settings.api_v1_prefix)
+    app.include_router(chat_feedback.router, prefix=settings.api_v1_prefix)
     app.include_router(mirror.router, prefix=settings.api_v1_prefix)  # Mirror Protocol
     app.include_router(contrastive.router, prefix=settings.api_v1_prefix)  # Contrastive Learning
     app.include_router(causal.router, prefix=settings.api_v1_prefix)  # Causal Reasoning

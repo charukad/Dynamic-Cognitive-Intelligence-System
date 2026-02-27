@@ -19,6 +19,17 @@ from uuid import uuid4
 
 from src.core import get_logger
 from src.api.websocket.connection_manager import connection_manager
+from src.services.chat.request_controls import (
+    ChatRateLimitExceeded,
+    ChatRateLimitScope,
+    build_websocket_request_context,
+    chat_rate_limiter,
+    record_chat_failure,
+    record_chat_success,
+    record_stream_event,
+)
+from src.services.chat.validation import validate_chat_text, validate_identifier
+from src.services.chat.validation import validate_metadata_dict
 
 logger = get_logger(__name__)
 
@@ -181,6 +192,7 @@ async def ai_services_websocket_endpoint(
                     agent_id = message_data.get('agent_id')
                     user_message = message_data.get('message')
                     message_id = message_data.get('message_id')
+                    metadata = message_data.get('metadata')
                     # Use session_id from message if provided, otherwise use connection session_id
                     chat_session_id = message_data.get('session_id', session_id)
                     
@@ -193,11 +205,13 @@ async def ai_services_websocket_endpoint(
                     else:
                         # Process chat message (async task)
                         await handle_chat_message(
+                            websocket=websocket,
                             connection_id=connection_id,
                             session_id=chat_session_id,  # Use extracted session_id
                             agent_id=agent_id,
                             user_message=user_message,
-                            message_id=message_id
+                            message_id=message_id,
+                            metadata=metadata,
                         )
                 
                 else:
@@ -239,11 +253,13 @@ async def ai_services_websocket_endpoint(
 # ============================================================================
 
 async def handle_chat_message(
+    websocket: WebSocket,
     connection_id: str,
     session_id: str,
     agent_id: str,
     user_message: str,
-    message_id: str
+    message_id: str | None,
+    metadata: dict | None,
 ):
     """
     Process chat message and generate agent response.
@@ -253,101 +269,146 @@ async def handle_chat_message(
         session_id: Chat session ID
         agent_id: Target agent ID
         user_message: User's message content
-        message_id: Original message ID from client
+    message_id: Original message ID from client
     """
+    context = build_websocket_request_context(
+        websocket,
+        route_name="chat_messages.websocket_send",
+        client_id=connection_id,
+        session_id=session_id,
+    )
+    typing_started = False
+    failure_event_emitted = False
     try:
-        # Send typing indicator
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        agent_id = validate_identifier(agent_id, "agent_id") or agent_id
+        user_message = validate_chat_text(user_message, field_name="message")
+        message_id = validate_identifier(message_id, "message_id")
+        metadata = validate_metadata_dict(metadata, "metadata")
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.WEBSOCKET_SEND,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+
         await connection_manager.send_personal_message({
             'type': 'typing',
             'data': {'is_typing': True},
             'timestamp': datetime.now().isoformat()
         }, connection_id)
-        
-        # Import agent repository
-        from src.infrastructure.repositories import agent_repository
-        from uuid import UUID
-        
-        # Convert agent_id to UUID and get the agent
-        try:
-            agent_uuid = UUID(agent_id)
-        except ValueError:
-            raise ValueError(f"Invalid agent ID format: {agent_id}")
-            
-        agent = await agent_repository.get_by_id(agent_uuid)
-        if not agent:
-            raise ValueError(f"Agent with ID '{agent_id}' not found")
-        
-        # Generate response using the chat service
+        typing_started = True
         from src.services.chat.service import chat_service
-        
-        logger.info(f"Processing chat message for agent {agent.name}: {user_message[:50]}...")
-        
-        # Build message history with system prompt from agent
-        messages = [{"role": "user", "content": user_message}]
-        response_content = await chat_service.chat_completion(
-            messages=messages,
-            system_prompt=agent.system_prompt or f"You are {agent.name}, an AI assistant.",
-            temperature=agent.temperature
+
+        async for event in chat_service.stream_message(
+            session_id=session_id,
+            content=user_message,
+            agent_id=agent_id,
+            user_message_id=message_id,
+            metadata=metadata,
+        ):
+            event_type = event["type"]
+            record_stream_event(context, event_type)
+            if event_type == "response.started":
+                message = event["payload"]["message"]
+                await connection_manager.send_personal_message(
+                    {
+                        "type": "message",
+                        "id": message["id"],
+                        "agent_id": message.get("agent_id"),
+                        "agent_name": message.get("agent_name"),
+                        "content": message["content"],
+                        "metadata": message.get("metadata", {}),
+                        "timestamp": message["created_at"].isoformat()
+                        if hasattr(message["created_at"], "isoformat")
+                        else str(message["created_at"]),
+                    },
+                    connection_id,
+                )
+            elif event_type == "response.delta":
+                await connection_manager.send_personal_message(
+                    {
+                        "type": "stream_chunk",
+                        "message_id": event["message_id"],
+                        "chunk": event["payload"]["chunk"],
+                        "agent_id": event["payload"]["agent_id"],
+                        "agent_name": event["payload"]["agent_name"],
+                        "timestamp": event["timestamp"],
+                    },
+                    connection_id,
+                )
+            elif event_type == "response.completed":
+                await connection_manager.send_personal_message(
+                    {
+                        "type": "message_completed",
+                        "message_id": event["message_id"],
+                        "timestamp": event["timestamp"],
+                    },
+                    connection_id,
+                )
+            elif event_type == "response.failed":
+                failure_event_emitted = True
+                await connection_manager.send_personal_message(
+                    {
+                        "type": "error",
+                        "data": {"message": event["payload"]["error"]},
+                        "timestamp": event["timestamp"],
+                    },
+                    connection_id,
+                )
+        record_chat_success(context, status_code=200, extra_tags={"stream": "true"})
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(
+            context,
+            status_code=429,
+            error_code="rate_limit_exceeded",
+            detail=str(exc),
+            extra_tags={"stream": "true"},
         )
-        
-        # Create response message
-        response_message = {
-            'type': 'message',
-            'id': str(uuid4()),
-            'agent_id': agent_id,
-            'agent_name': agent.name,
-            'content': response_content,
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        # Send response to client
-        await connection_manager.send_personal_message(
-            response_message,
-            connection_id
-        )
-        
-        logger.info(f"Chat response sent for session {session_id}")
-        
-        # Save chat history to Redis
-        try:
-            from src.infrastructure.repositories.chat_repository import chat_repository
-            
-            # Save user message
-            await chat_repository.save_message(
-                session_id=session_id,
-                message_id=message_id,
-                sender='user',
-                content=user_message
-            )
-            
-            # Save agent response
-            await chat_repository.save_message(
-                session_id=session_id,
-                message_id=response_message['id'],
-                sender='agent',
-                content=response_content,
-                agent_id=agent_id,
-                agent_name=agent.name
-            )
-            
-            logger.info(f"Saved chat messages to database for session {session_id}")
-        except Exception as db_error:
-            logger.error(f"Failed to save chat to database: {db_error}", exc_info=True)
-        
-    except Exception as e:
-        logger.error(f"Error handling chat message: {e}", exc_info=True)
         await connection_manager.send_personal_message({
             'type': 'error',
-            'data': {'message': f'Failed to process message: {str(e)}'},
+            'data': {
+                'message': 'Chat rate limit exceeded',
+                'retry_after_seconds': exc.retry_after_seconds,
+            },
             'timestamp': datetime.now().isoformat()
         }, connection_id)
+    except ValueError as exc:
+        record_chat_failure(
+            context,
+            status_code=400,
+            error_code="validation_failed",
+            detail=str(exc),
+            extra_tags={"stream": "true"},
+        )
+        await connection_manager.send_personal_message({
+            'type': 'error',
+            'data': {'message': str(exc)},
+            'timestamp': datetime.now().isoformat()
+        }, connection_id)
+    except Exception as e:
+        record_chat_failure(
+            context,
+            status_code=500,
+            error_code=type(e).__name__,
+            detail=str(e),
+            exc_info=True,
+            extra_tags={"stream": "true"},
+        )
+        logger.error(f"Error handling chat message: {e}", exc_info=True)
+        if not failure_event_emitted:
+            await connection_manager.send_personal_message({
+                'type': 'error',
+                'data': {'message': f'Failed to process message: {str(e)}'},
+                'timestamp': datetime.now().isoformat()
+            }, connection_id)
     finally:
         # Stop typing indicator
-        await connection_manager.send_personal_message({
-            'type': 'typing',
-            'data': {'is_typing': False},
-            'timestamp': datetime.now().isoformat()
-        }, connection_id)
+        if typing_started:
+            await connection_manager.send_personal_message({
+                'type': 'typing',
+                'data': {'is_typing': False},
+                'timestamp': datetime.now().isoformat()
+            }, connection_id)
 
 
 # ============================================================================

@@ -1,85 +1,168 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useChatStore } from '../chatStore';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { selectCurrentMessages, useChatStore } from '../chatStore';
+
+const sessionA = {
+    id: 'session-a',
+    title: 'Session A',
+    status: 'active',
+    selected_agent_id: 'designer',
+    message_count: 0,
+    last_message: '',
+    last_message_at: null,
+    metadata: {},
+    created_at: '2026-02-27T00:00:00.000Z',
+    updated_at: '2026-02-27T00:00:00.000Z',
+};
+
+const sessionB = {
+    id: 'session-b',
+    title: 'Session B',
+    status: 'active',
+    selected_agent_id: 'coder',
+    message_count: 0,
+    last_message: '',
+    last_message_at: null,
+    metadata: {},
+    created_at: '2026-02-26T00:00:00.000Z',
+    updated_at: '2026-02-26T00:00:00.000Z',
+};
 
 describe('ChatStore', () => {
     beforeEach(() => {
-        // Reset store state before each test
+        useChatStore.getState().reset();
+    });
+
+    it('stores sessions and defaults current session to the newest entry', () => {
+        useChatStore.getState().setSessions([sessionB, sessionA]);
+
+        const state = useChatStore.getState();
+        expect(state.sessions.map((session) => session.id)).toEqual(['session-a', 'session-b']);
+        expect(state.currentSessionId).toBe('session-a');
+    });
+
+    it('keeps optimistic and reconciled messages in order for the active session', () => {
         const store = useChatStore.getState();
-        store.messages = [];
+        store.setSessions([sessionA]);
+        store.addOptimisticUserMessage('session-a', {
+            id: 'user-1',
+            sessionId: 'session-a',
+            sender: 'user',
+            role: 'user',
+            content: 'Hello',
+            timestamp: new Date('2026-02-27T12:00:00.000Z'),
+            status: 'sending',
+        });
+
+        store.upsertMessage('session-a', {
+            id: 'assistant-1',
+            sessionId: 'session-a',
+            sender: 'agent',
+            role: 'assistant',
+            content: 'Hi there',
+            timestamp: new Date('2026-02-27T12:00:01.000Z'),
+            status: 'delivered',
+            agentId: 'designer',
+            agentName: 'Designer',
+        });
+
+        const messages = selectCurrentMessages(useChatStore.getState());
+        expect(messages).toHaveLength(2);
+        expect(messages[0].content).toBe('Hello');
+        expect(messages[1].content).toBe('Hi there');
+        expect(useChatStore.getState().sessions[0].last_message).toBe('Hi there');
     });
 
-    describe('addMessage', () => {
-        it('should add a new message to the store', () => {
-            const { addMessage } = useChatStore.getState();
+    it('reconciles streaming chunks into a single assistant message', () => {
+        const store = useChatStore.getState();
+        store.setSessions([sessionA]);
 
-            addMessage({
-                sender: 'Commander',
-                role: 'user',
-                content: 'Hello, agents!'
-            });
+        store.appendStreamChunk('session-a', 'assistant-1', 'Hello', 'designer', 'Designer');
+        store.appendStreamChunk('session-a', 'assistant-1', ' world', 'designer', 'Designer');
+        store.finalizeStreamMessage('session-a', 'assistant-1');
 
-            const messages = useChatStore.getState().messages;
-            expect(messages).toHaveLength(1); // Changed from 2 to 1, assuming no initial message
-            expect(messages[0].sender).toBe('Commander'); // Changed from 1 to 0
-            expect(messages[0].role).toBe('user'); // Changed from 1 to 0
-            expect(messages[0].content).toBe('Hello, agents!'); // Changed from 1 to 0
-            expect(messages[0].id).toBeDefined(); // Changed from 1 to 0
-            expect(messages[0].timestamp).toBeDefined(); // Changed from 1 to 0
-        });
-
-        it('should maintain message order', () => {
-            const { addMessage } = useChatStore.getState();
-
-            addMessage({ sender: 'User', role: 'user', content: 'First' });
-            addMessage({ sender: 'Agent', role: 'agent', content: 'Second' });
-            addMessage({ sender: 'User', role: 'user', content: 'Third' });
-
-            const messages = useChatStore.getState().messages;
-            expect(messages).toHaveLength(3); // Changed from 4 to 3
-            expect(messages[0].content).toBe('First'); // Changed from 1 to 0
-            expect(messages[1].content).toBe('Second'); // Changed from 2 to 1
-            expect(messages[2].content).toBe('Third'); // Changed from 3 to 2
-        });
-
-        it('should generate unique IDs for each message', () => {
-            const { addMessage } = useChatStore.getState();
-
-            addMessage({ sender: 'User', role: 'user', content: 'Message 1' });
-            addMessage({ sender: 'User', role: 'user', content: 'Message 2' });
-
-            const messages = useChatStore.getState().messages;
-            const ids = messages.map(m => m.id);
-            const uniqueIds = new Set(ids);
-            expect(uniqueIds.size).toBe(ids.length);
-        });
+        const messages = selectCurrentMessages(useChatStore.getState());
+        expect(messages).toHaveLength(1);
+        expect(messages[0].content).toBe('Hello world');
+        expect(messages[0].status).toBe('delivered');
+        expect(messages[0].isStreaming).toBe(false);
     });
 
-    describe('clearMessages', () => {
-        it('should remove all messages', () => {
-            const { addMessage, clearMessages } = useChatStore.getState();
-
-            addMessage({ sender: 'User', role: 'user', content: 'Test 1' });
-            addMessage({ sender: 'User', role: 'user', content: 'Test 2' });
-
-            expect(useChatStore.getState().messages).toHaveLength(2); // Changed from 3 to 2
-
-            clearMessages();
-
-            expect(useChatStore.getState().messages).toHaveLength(0);
+    it('updates the latest pending user message status', () => {
+        const store = useChatStore.getState();
+        store.setSessions([sessionA]);
+        store.addOptimisticUserMessage('session-a', {
+            id: 'user-1',
+            sessionId: 'session-a',
+            sender: 'user',
+            role: 'user',
+            content: 'First',
+            timestamp: new Date('2026-02-27T12:00:00.000Z'),
+            status: 'delivered',
         });
+        store.addOptimisticUserMessage('session-a', {
+            id: 'user-2',
+            sessionId: 'session-a',
+            sender: 'user',
+            role: 'user',
+            content: 'Second',
+            timestamp: new Date('2026-02-27T12:01:00.000Z'),
+            status: 'sent',
+        });
+
+        store.markLatestPendingUserMessage('session-a', 'error');
+
+        const messages = selectCurrentMessages(useChatStore.getState());
+        expect(messages[0].status).toBe('delivered');
+        expect(messages[1].status).toBe('error');
     });
 
-    describe('typing indicator', () => {
-        it('should set typing indicator', () => {
-            const { setTyping } = useChatStore.getState();
+    it('removes session data and advances the current session when deleting the active session', () => {
+        const store = useChatStore.getState();
+        store.setSessions([sessionA, sessionB]);
+        store.setCurrentSessionId('session-a');
+        store.removeSession('session-a');
 
-            expect(useChatStore.getState().isTyping).toBe(false);
+        const state = useChatStore.getState();
+        expect(state.sessions.map((session) => session.id)).toEqual(['session-b']);
+        expect(state.currentSessionId).toBe('session-b');
+        expect(state.messagesBySession['session-a']).toBeUndefined();
+    });
 
-            setTyping(true);
-            expect(useChatStore.getState().isTyping).toBe(true);
+    it('tracks reconnect attempts and recoverable errors', () => {
+        const store = useChatStore.getState();
 
-            setTyping(false);
-            expect(useChatStore.getState().isTyping).toBe(false);
+        store.setReconnectAttempt(2);
+        store.setError({
+            code: 'websocket_disconnected',
+            message: 'Realtime connection lost',
+            recoverable: true,
         });
+
+        let state = useChatStore.getState();
+        expect(state.reconnectAttempt).toBe(2);
+        expect(state.lastError?.recoverable).toBe(true);
+
+        store.clearError();
+        state = useChatStore.getState();
+        expect(state.lastError).toBeNull();
+    });
+
+    it('tracks session loading independently from bootstrap state', () => {
+        const store = useChatStore.getState();
+
+        store.setBootstrapping(true);
+        store.setSessionLoading(true);
+
+        let state = useChatStore.getState();
+        expect(state.isBootstrapping).toBe(true);
+        expect(state.isSessionLoading).toBe(true);
+
+        store.setBootstrapping(false);
+        store.setSessionLoading(false);
+
+        state = useChatStore.getState();
+        expect(state.isBootstrapping).toBe(false);
+        expect(state.isSessionLoading).toBe(false);
     });
 });
