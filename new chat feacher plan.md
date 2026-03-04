@@ -4,7 +4,7 @@
 Deliver the chat system as a primary product capability with production-grade architecture, real persistence, real agent execution, and a maintainable frontend/backend contract. This plan assumes the final feature must not ship with mock responses, JSON-file chat storage, or temporary fallback behavior.
 
 ## Current Audit Summary
-- The provided specification files, `new chat feacher.md` and `new chat feacher ui ux.md`, are currently empty. Requirements, UX flows, and acceptance criteria still need to be written into them.
+- The primary specification files, `new chat feacher.md` and `new chat feacher ui ux.md`, are now populated and treated as the approved scope baseline for implementation and release review.
 - The current frontend chat experience already exists in `dcis/frontend/src/components/chat`, but it mixes local state, `localStorage`, direct fetches, and a WebSocket fallback path.
 - The current backend chat stack uses file-based session storage in `dcis/backend/src/infrastructure/repositories/chat_repository.py`, which is not suitable for enterprise-grade durability, concurrency, or auditability.
 - The UI expects richer behavior than the backend guarantees today. There is no hardened contract for session lifecycle, streaming, feedback, retries, or message status reconciliation.
@@ -41,6 +41,18 @@ Deliver the chat system as a primary product capability with production-grade ar
 - Define conversation and message schemas.
 - Choose the production persistence path and write migrations.
 - Define API contracts and real-time event envelopes.
+- Document delivery semantics for retries, failures, and idempotent message submission.
+
+## Error States, Retries, and Idempotency Rules
+- Session bootstrap failures must surface as recoverable UI errors with explicit retry actions and no hidden fallback session creation.
+- Message send failures must preserve the failed user turn in the timeline with retry controls; retries create a new delivery attempt but keep the original user-visible content.
+- Realtime transport failure must degrade to HTTP send without losing the active session or selected agent context.
+- Backend `POST /chat/sessions/{session_id}/messages/send` must treat the client-provided message `id` as the idempotency key for the user turn within that session.
+- Duplicate user message IDs in the same session must not create duplicate user messages; the existing persisted turn should be reused and the assistant delivery should reconcile onto that canonical turn.
+- Assistant streaming is not independently idempotent; if generation fails after the user turn is persisted, the assistant message must be marked `failed` and surfaced for explicit user retry.
+- Feedback submission is idempotent at the `(session_id, message_id)` level. Re-submitting feedback replaces the prior value rather than creating duplicates.
+- Session deletion is terminal for the canonical record. The UI must remove the deleted session, clear associated local state, and open or create the next valid session.
+- All retryable failures must emit structured logs and metrics with the route name, session ID, retry eligibility, and failure category.
 
 ### Phase 2: Backend Foundation
 - Implement repositories, services, and API routes.
