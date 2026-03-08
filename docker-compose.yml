@@ -41,7 +41,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     ports:
-      - "3001:3000"
+      - "3119:3000"
     environment:
       - BACKEND_URL=http://backend:8000
       - NEXT_PUBLIC_WS_URL=ws://localhost:8001

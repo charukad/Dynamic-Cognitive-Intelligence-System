@@ -182,7 +182,7 @@ export function Navigation() {
                     onPointerDown={handleResizeStart}
                 />
 
-                <div className="h-full overflow-hidden">
+                <div className="h-full overflow-y-auto overflow-x-hidden">
                     <ChatInterface embedded />
                 </div>
             </div>

@@ -9,6 +9,8 @@ from .chat import (
     ChatMessageRole,
     ChatMessageSender,
     ChatMessageStatus,
+    ChatSessionEvent,
+    ChatSessionEventSeverity,
     ChatSession,
     ChatSessionStatus,
 )
@@ -29,6 +31,8 @@ __all__ = [
     "ChatMessageStatus",
     "ChatMessageFeedback",
     "ChatFeedbackType",
+    "ChatSessionEvent",
+    "ChatSessionEventSeverity",
     "Task",
     "TaskStatus",
     "TaskPriority",

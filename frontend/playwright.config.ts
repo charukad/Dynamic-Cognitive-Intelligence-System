@@ -16,7 +16,7 @@ export default defineConfig({
         ['list'],
     ],
     use: {
-        baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+        baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3119',
         trace: 'on-first-retry',
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',
@@ -48,9 +48,9 @@ export default defineConfig({
 
     // Run local dev server before starting tests
     webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
+        command: 'pnpm exec next dev --webpack --port 3119',
+        url: 'http://localhost:3119',
+        reuseExistingServer: false,
         timeout: 120 * 1000,
     },
 });

@@ -51,6 +51,15 @@ class ChatFeedbackType(str, Enum):
     TEXT = "text_feedback"
 
 
+class ChatSessionEventSeverity(str, Enum):
+    """Severity levels for persisted workspace events."""
+
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
 class ChatSession(DomainEntity):
     """Persistent chat conversation."""
 
@@ -91,3 +100,18 @@ class ChatMessageFeedback(DomainEntity):
     text_feedback: Optional[str] = Field(default=None)
     user_id: Optional[str] = Field(default=None)
     metadata: dict = Field(default_factory=dict)
+
+
+class ChatSessionEvent(DomainEntity):
+    """Persisted orchestration event for workspace replay and analytics."""
+
+    id: str | UUID = Field(default_factory=uuid4)
+    session_id: str = Field(..., min_length=1)
+    event_type: str = Field(..., min_length=1, max_length=64)
+    room_id: Optional[str] = Field(default=None, max_length=64)
+    room_title: Optional[str] = Field(default=None, max_length=255)
+    description: str = Field(..., min_length=1)
+    severity: ChatSessionEventSeverity = Field(default=ChatSessionEventSeverity.INFO)
+    related_message_id: Optional[str] = Field(default=None)
+    related_agent_id: Optional[str] = Field(default=None)
+    payload: dict = Field(default_factory=dict)

@@ -26,9 +26,15 @@ import {
     Database,
     GitBranch,
     LoaderCircle,
+    Pause,
+    Play,
     RotateCcw,
     ShieldAlert,
+    SkipBack,
+    SkipForward,
     Sparkles,
+    Maximize2,
+    Minimize2,
     ThumbsUp,
     ThumbsDown,
     PlusCircle,
@@ -41,9 +47,15 @@ import ChatHistorySidebar from './ChatHistorySidebar';
 import {
     ChatMessageRecord,
     ChatSessionSummary,
+    ChatWorkspaceDagResponse,
+    ChatWorkspaceReplayResponse,
     ChatWorkspaceResponse,
+    ChatWorkspaceRoomDetailResponse,
     createChatSession,
+    getChatWorkspaceDag,
+    getChatWorkspaceReplay,
     getChatWorkspace,
+    getChatWorkspaceRoom,
     getChatSession,
     listChatMessages,
     listChatSessions,
@@ -95,6 +107,7 @@ interface WebSocketPayload {
 type ChatExecutionMode = 'balanced' | 'high_accuracy' | 'budget';
 type ChatDisplayMode = 'simple' | 'executive' | 'full_simulation';
 type WorkspacePanelTab = 'employees' | 'activity' | 'stats' | 'dag' | 'replay';
+type FullscreenWorkspaceView = 'live_graph' | 'workspace' | 'analytics';
 type OfficeRoomId =
     | 'strategy'
     | 'boss'
@@ -138,6 +151,121 @@ interface TaskStage {
     detail: string;
 }
 
+interface GraphNodeState {
+    id: string;
+    label: string;
+    kind: string;
+    status: 'active' | 'watching' | 'idle' | 'alert';
+    x: number;
+    y: number;
+}
+
+interface GraphEdgeState {
+    id: string;
+    fromId: string;
+    toId: string;
+    label: string;
+    status: 'info' | 'success' | 'warning' | 'critical';
+}
+
+interface RoomTimelineItemState {
+    id: string;
+    roomId: string;
+    roomTitle: string | null;
+    type: string;
+    description: string;
+    timestamp: Date;
+    severity: 'info' | 'success' | 'warning' | 'critical';
+}
+
+interface RoomDetailMessageState {
+    id: string;
+    role: string;
+    sender: string;
+    content: string;
+    status: string;
+    agentName: string | null;
+    createdAt: Date;
+}
+
+interface RoomDetailState {
+    room: OfficeRoom;
+    summary: string;
+    metrics: Array<{ label: string; value: string; hint: string }>;
+    highlights: string[];
+    recentEvents: RoomTimelineItemState[];
+    relatedMessages: RoomDetailMessageState[];
+    actions: string[];
+}
+
+interface DagNodeState {
+    id: string;
+    title: string;
+    roomId: string | null;
+    status: 'done' | 'active' | 'waiting' | 'alert';
+    detail: string;
+    dependencies: string[];
+    startedAt: Date | null;
+    completedAt: Date | null;
+    executionTimeMs: number | null;
+    assignedAgent: string | null;
+    evaluationScore: number | null;
+    retryCount: number;
+    modelUsed: string | null;
+    eventIds: string[];
+}
+
+interface DagEdgeState {
+    id: string;
+    fromId: string;
+    toId: string;
+    label: string;
+    status: 'info' | 'success' | 'warning' | 'critical';
+}
+
+interface DagSnapshotState {
+    sessionId: string;
+    summary: string;
+    latestNodeId: string | null;
+    totalDurationMs: number | null;
+    nodes: DagNodeState[];
+    edges: DagEdgeState[];
+}
+
+interface ReplayFrameState {
+    id: string;
+    index: number;
+    type: string;
+    description: string;
+    timestamp: Date;
+    severity: 'info' | 'success' | 'warning' | 'critical';
+    roomId: string | null;
+    roomTitle: string | null;
+    agentName: string | null;
+    relatedMessageId: string | null;
+    focusNodeIds: string[];
+    focusEdgeId: string | null;
+}
+
+interface ReplaySnapshotState {
+    sessionId: string;
+    summary: string;
+    currentIndex: number;
+    startedAt: Date | null;
+    endedAt: Date | null;
+    totalDurationMs: number | null;
+    frames: ReplayFrameState[];
+}
+
+interface FullscreenCapableElement extends HTMLElement {
+    webkitRequestFullscreen?: () => Promise<void> | void;
+}
+
+interface FullscreenCapableDocument extends Document {
+    webkitExitFullscreen?: () => Promise<void> | void;
+    webkitFullscreenElement?: Element | null;
+}
+
 export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
     const prefersReducedMotion = useReducedMotion();
     const [inputText, setInputText] = useState('');
@@ -150,6 +278,19 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
     const [graphOverlayEnabled, setGraphOverlayEnabled] = useState(false);
     const [workflowState, setWorkflowState] = useState<'idle' | 'dispatching' | 'coordinating' | 'returning'>('idle');
     const [workspaceSnapshot, setWorkspaceSnapshot] = useState<ChatWorkspaceResponse | null>(null);
+    const [fullscreenWorkspaceView, setFullscreenWorkspaceView] = useState<FullscreenWorkspaceView>('live_graph');
+    const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false);
+    const [roomDetail, setRoomDetail] = useState<RoomDetailState | null>(null);
+    const [isRoomDetailLoading, setIsRoomDetailLoading] = useState(false);
+    const [roomDetailError, setRoomDetailError] = useState<string | null>(null);
+    const [dagSnapshot, setDagSnapshot] = useState<DagSnapshotState | null>(null);
+    const [isDagLoading, setIsDagLoading] = useState(false);
+    const [dagError, setDagError] = useState<string | null>(null);
+    const [replaySnapshot, setReplaySnapshot] = useState<ReplaySnapshotState | null>(null);
+    const [isReplayLoading, setIsReplayLoading] = useState(false);
+    const [replayError, setReplayError] = useState<string | null>(null);
+    const [isFullscreenSupported, setIsFullscreenSupported] = useState(true);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const composerInputId = useId();
     const composerHintId = useId();
     const composerStatusId = useId();
@@ -194,6 +335,7 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
     const shutdownRef = useRef(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const chatInterfaceRef = useRef<HTMLDivElement>(null);
 
     const selectedAgent =
         availableAgents.find((agent) => agent.id === selectedAgentId)
@@ -220,8 +362,62 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
         try {
             const workspace = await getChatWorkspace(sessionId);
             setWorkspaceSnapshot(workspace);
+            if (isRoomDetailOpen && currentSessionId === sessionId) {
+                void refreshRoomDetail(sessionId, activeRoomId);
+            }
+            if (currentSessionId === sessionId && activeWorkspaceTab === 'dag') {
+                void refreshDag(sessionId);
+            }
+            if (currentSessionId === sessionId && activeWorkspaceTab === 'replay') {
+                void refreshReplay(sessionId);
+            }
         } catch (error) {
             console.error('Failed to refresh chat workspace:', error);
+        }
+    }
+
+    async function refreshRoomDetail(sessionId: string, roomId: OfficeRoomId) {
+        setIsRoomDetailLoading(true);
+        setRoomDetailError(null);
+        try {
+            const detail = await getChatWorkspaceRoom(sessionId, roomId);
+            setRoomDetail(mapWorkspaceRoomDetail(detail));
+        } catch (error) {
+            console.error('Failed to refresh room detail:', error);
+            setRoomDetail(null);
+            setRoomDetailError('Failed to load room details.');
+        } finally {
+            setIsRoomDetailLoading(false);
+        }
+    }
+
+    async function refreshDag(sessionId: string) {
+        setIsDagLoading(true);
+        setDagError(null);
+        try {
+            const snapshot = await getChatWorkspaceDag(sessionId);
+            setDagSnapshot(mapWorkspaceDagSnapshot(snapshot));
+        } catch (error) {
+            console.error('Failed to refresh task DAG:', error);
+            setDagError('Failed to load task DAG.');
+            setDagSnapshot(null);
+        } finally {
+            setIsDagLoading(false);
+        }
+    }
+
+    async function refreshReplay(sessionId: string) {
+        setIsReplayLoading(true);
+        setReplayError(null);
+        try {
+            const snapshot = await getChatWorkspaceReplay(sessionId);
+            setReplaySnapshot(mapWorkspaceReplaySnapshot(snapshot));
+        } catch (error) {
+            console.error('Failed to refresh replay view:', error);
+            setReplayError('Failed to load replay timeline.');
+            setReplaySnapshot(null);
+        } finally {
+            setIsReplayLoading(false);
         }
     }
 
@@ -235,6 +431,13 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
             setSelectedAgentId(session.selected_agent_id || selectedAgent?.id || null);
             replaceMessages(session.id, []);
             setTyping(false);
+            setIsRoomDetailOpen(false);
+            setRoomDetail(null);
+            setRoomDetailError(null);
+            setDagSnapshot(null);
+            setDagError(null);
+            setReplaySnapshot(null);
+            setReplayError(null);
             void refreshWorkspace(session.id);
             clearError();
             return session;
@@ -264,6 +467,13 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
             setSelectedAgentId(session.selected_agent_id || null);
             replaceMessages(session.id, storedMessages.map(mapApiMessageToUiMessage));
             setTyping(false);
+            setIsRoomDetailOpen(false);
+            setRoomDetail(null);
+            setRoomDetailError(null);
+            setDagSnapshot(null);
+            setDagError(null);
+            setReplaySnapshot(null);
+            setReplayError(null);
             void refreshWorkspace(session.id);
             clearError();
         } catch (error) {
@@ -545,8 +755,45 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
     useEffect(() => {
         if (!currentSessionId) {
             setWorkspaceSnapshot(null);
+            setIsRoomDetailOpen(false);
+            setRoomDetail(null);
+            setRoomDetailError(null);
+            setDagSnapshot(null);
+            setDagError(null);
+            setReplaySnapshot(null);
+            setReplayError(null);
         }
     }, [currentSessionId]);
+
+    useEffect(() => {
+        if (!currentSessionId || !isRoomDetailOpen) {
+            return;
+        }
+
+        void refreshRoomDetail(currentSessionId, activeRoomId);
+    }, [activeRoomId, currentSessionId, isRoomDetailOpen]);
+
+    useEffect(() => {
+        if (!currentSessionId) {
+            return;
+        }
+
+        if (activeWorkspaceTab === 'dag') {
+            void refreshDag(currentSessionId);
+        }
+        if (activeWorkspaceTab === 'replay') {
+            void refreshReplay(currentSessionId);
+        }
+    }, [activeWorkspaceTab, currentSessionId]);
+
+    function handleRoomSelect(roomId: OfficeRoomId) {
+        setActiveRoomId(roomId);
+        setIsRoomDetailOpen(true);
+    }
+
+    function handleReplayFocusRoom(roomId: OfficeRoomId) {
+        setActiveRoomId(roomId);
+    }
 
     async function ensureActiveSession() {
         if (currentSessionId) {
@@ -840,6 +1087,90 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
             description: item.description,
             timestamp: item.timestamp,
         }));
+    const graphNodes = workspaceSnapshot?.graph_nodes.length
+        ? workspaceSnapshot.graph_nodes.map(mapWorkspaceGraphNode)
+        : buildFallbackGraphNodes(officeRooms, selectedAgent?.name || latestAssistantMessage?.agentName || null);
+    const graphEdges = workspaceSnapshot?.graph_edges.length
+        ? workspaceSnapshot.graph_edges.map(mapWorkspaceGraphEdge)
+        : buildFallbackGraphEdges(latestRouting);
+    const roomTimeline = workspaceSnapshot?.room_timeline.length
+        ? workspaceSnapshot.room_timeline.map(mapWorkspaceRoomTimelineItem)
+        : activityFeed
+            .slice(0, 8)
+            .map((item) => ({
+                id: item.id,
+                roomId: activeRoom.id,
+                roomTitle: activeRoom.title,
+                type: item.type,
+                description: item.description,
+                timestamp: item.timestamp,
+                severity: item.severity,
+            }));
+    const effectiveGraphOverlayEnabled = isFullscreen && fullscreenWorkspaceView === 'live_graph'
+        ? true
+        : graphOverlayEnabled;
+
+    const getFullscreenElement = () => {
+        const fullscreenDocument = document as FullscreenCapableDocument;
+        return fullscreenDocument.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null;
+    };
+
+    useEffect(() => {
+        const targetElement = chatInterfaceRef.current as FullscreenCapableElement | null;
+        if (!targetElement) {
+            setIsFullscreenSupported(false);
+            return;
+        }
+
+        const canRequestFullscreen = typeof targetElement.requestFullscreen === 'function'
+            || typeof targetElement.webkitRequestFullscreen === 'function';
+        setIsFullscreenSupported(canRequestFullscreen);
+
+        const syncFullscreenState = () => {
+            setIsFullscreen(getFullscreenElement() === targetElement);
+        };
+
+        syncFullscreenState();
+        document.addEventListener('fullscreenchange', syncFullscreenState);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', syncFullscreenState);
+            document.removeEventListener('webkitfullscreenchange', syncFullscreenState);
+        };
+    }, []);
+
+    const toggleFullscreen = async () => {
+        const targetElement = chatInterfaceRef.current as FullscreenCapableElement | null;
+        if (!targetElement) {
+            return;
+        }
+
+        const fullscreenDocument = document as FullscreenCapableDocument;
+        try {
+            if (getFullscreenElement() === targetElement) {
+                if (typeof fullscreenDocument.exitFullscreen === 'function') {
+                    await fullscreenDocument.exitFullscreen();
+                    return;
+                }
+                if (typeof fullscreenDocument.webkitExitFullscreen === 'function') {
+                    await fullscreenDocument.webkitExitFullscreen();
+                    return;
+                }
+                return;
+            }
+
+            if (typeof targetElement.requestFullscreen === 'function') {
+                await targetElement.requestFullscreen();
+                return;
+            }
+            if (typeof targetElement.webkitRequestFullscreen === 'function') {
+                await targetElement.webkitRequestFullscreen();
+            }
+        } catch (error) {
+            console.error('Failed to toggle fullscreen mode:', error);
+        }
+    };
 
     return (
         <>
@@ -851,7 +1182,26 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
                     }}
                 />
             )}
-            <div className={`chat-interface dcis-chat ${embedded ? 'embedded' : ''}`}>
+            <div
+                ref={chatInterfaceRef}
+                className={`chat-interface dcis-chat ${embedded ? 'embedded' : ''} ${isFullscreen ? 'is-fullscreen' : ''}`}
+            >
+                <div className="chat-floating-controls">
+                    <button
+                        type="button"
+                        className={`fullscreen-toggle ${isFullscreen ? 'active' : ''}`}
+                        aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+                        aria-pressed={isFullscreen}
+                        onClick={() => {
+                            void toggleFullscreen();
+                        }}
+                        disabled={!isFullscreenSupported}
+                        title={isFullscreenSupported ? 'Toggle full screen' : 'Full screen is not supported in this browser'}
+                    >
+                        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                        {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+                    </button>
+                </div>
                 <div className="chat-shell">
                     <section className="front-desk-panel">
                         <div className="front-desk-header">
@@ -862,17 +1212,19 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
                                     Submit work, observe orchestration, and track exactly how the office routes it.
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void handleNewChat();
-                                }}
-                                className="new-chat-btn"
-                                title="Start New Chat"
-                            >
-                                <PlusCircle size={20} />
-                                <span>New Chat</span>
-                            </button>
+                            <div className="front-desk-header-actions">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        void handleNewChat();
+                                    }}
+                                    className="new-chat-btn"
+                                    title="Start New Chat"
+                                >
+                                    <PlusCircle size={20} />
+                                    <span>New Chat</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="front-desk-toolbar">
@@ -1123,70 +1475,166 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
                                 </p>
                             </div>
                             <div className="workspace-controls">
-                                <div className="display-mode-switch" role="tablist" aria-label="Workspace display mode">
-                                    {([
-                                        ['simple', 'Simple'],
-                                        ['executive', 'Executive'],
-                                        ['full_simulation', 'Full Simulation'],
-                                    ] as Array<[ChatDisplayMode, string]>).map(([modeId, label]) => (
-                                        <button
-                                            key={modeId}
-                                            type="button"
-                                            role="tab"
-                                            aria-selected={resolvedDisplayMode === modeId}
-                                            className={`display-mode-chip ${resolvedDisplayMode === modeId ? 'active' : ''}`}
-                                            onClick={() => {
-                                                if (prefersReducedMotion && modeId !== 'simple') {
-                                                    return;
-                                                }
-                                                setDisplayMode(modeId);
-                                            }}
-                                            disabled={Boolean(prefersReducedMotion && modeId !== 'simple')}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                                <button
-                                    type="button"
-                                    className={`overlay-toggle ${graphOverlayEnabled ? 'active' : ''}`}
-                                    aria-pressed={graphOverlayEnabled}
-                                    onClick={() => setGraphOverlayEnabled((current) => !current)}
-                                >
-                                    <GitBranch size={14} />
-                                    Live Office Graph
-                                </button>
+                                {isFullscreen && (
+                                    <div className="fullscreen-view-switch" role="tablist" aria-label="Fullscreen right panel view">
+                                        {([
+                                            ['live_graph', 'Live Office Graph'],
+                                            ['workspace', 'Workspace'],
+                                            ['analytics', 'Analytics'],
+                                        ] as Array<[FullscreenWorkspaceView, string]>).map(([viewId, label]) => (
+                                            <button
+                                                key={viewId}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={fullscreenWorkspaceView === viewId}
+                                                className={`fullscreen-view-chip ${fullscreenWorkspaceView === viewId ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    setFullscreenWorkspaceView(viewId);
+                                                    setIsRoomDetailOpen(false);
+                                                }}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {(!isFullscreen || fullscreenWorkspaceView !== 'analytics') && (
+                                    <div className="display-mode-switch" role="tablist" aria-label="Workspace display mode">
+                                        {([
+                                            ['simple', 'Simple'],
+                                            ['executive', 'Executive'],
+                                            ['full_simulation', 'Full Simulation'],
+                                        ] as Array<[ChatDisplayMode, string]>).map(([modeId, label]) => (
+                                            <button
+                                                key={modeId}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={resolvedDisplayMode === modeId}
+                                                className={`display-mode-chip ${resolvedDisplayMode === modeId ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    if (prefersReducedMotion && modeId !== 'simple') {
+                                                        return;
+                                                    }
+                                                    setDisplayMode(modeId);
+                                                }}
+                                                disabled={Boolean(prefersReducedMotion && modeId !== 'simple')}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {(!isFullscreen || fullscreenWorkspaceView === 'workspace') && (
+                                    <button
+                                        type="button"
+                                        className={`overlay-toggle ${graphOverlayEnabled ? 'active' : ''}`}
+                                        aria-pressed={graphOverlayEnabled}
+                                        onClick={() => setGraphOverlayEnabled((current) => !current)}
+                                    >
+                                        <GitBranch size={14} />
+                                        Live Office Graph
+                                    </button>
+                                )}
                             </div>
                         </div>
 
-                        <OfficeWorkspace
-                            rooms={officeRooms}
-                            activeRoom={activeRoom}
-                            activeRoomId={activeRoomId}
-                            onRoomSelect={setActiveRoomId}
-                            workflowState={workflowState}
-                            graphOverlayEnabled={graphOverlayEnabled}
-                            displayMode={resolvedDisplayMode}
-                            selectedAgent={selectedAgent}
-                            latestRouting={latestRouting}
-                            latestAssistantMessage={latestAssistantMessage}
-                            lastErrorMessage={lastError?.message || null}
-                            typingAgentName={typing.agentName}
-                        />
+                        {isFullscreen ? (
+                            <div className={`fullscreen-right-content ${fullscreenWorkspaceView.replace('_', '-')}`}>
+                                {fullscreenWorkspaceView === 'analytics' ? (
+                                    <AnalyticsPanel
+                                        activeTab={activeWorkspaceTab}
+                                        onTabChange={setActiveWorkspaceTab}
+                                        availableAgents={availableAgents}
+                                        selectedAgentId={selectedAgent?.id || null}
+                                        selectedAgentName={selectedAgent?.name || null}
+                                        typing={typing}
+                                        activityFeed={activityFeed}
+                                        officeStats={officeStats}
+                                        taskStages={taskStages}
+                                        replayItems={replayItems}
+                                        latestAssistantMessage={latestAssistantMessage}
+                                        dagSnapshot={dagSnapshot}
+                                        isDagLoading={isDagLoading}
+                                        dagError={dagError}
+                                        replaySnapshot={replaySnapshot}
+                                        isReplayLoading={isReplayLoading}
+                                        replayError={replayError}
+                                        onReplayFocusRoom={handleReplayFocusRoom}
+                                    />
+                                ) : (
+                                    <OfficeWorkspace
+                                        rooms={officeRooms}
+                                        activeRoom={activeRoom}
+                                        activeRoomId={activeRoomId}
+                                        onRoomSelect={handleRoomSelect}
+                                        workflowState={workflowState}
+                                        graphOverlayEnabled={effectiveGraphOverlayEnabled}
+                                        displayMode={resolvedDisplayMode}
+                                        selectedAgent={selectedAgent}
+                                        latestRouting={latestRouting}
+                                        latestAssistantMessage={latestAssistantMessage}
+                                        lastErrorMessage={lastError?.message || null}
+                                        typingAgentName={typing.agentName}
+                                        graphNodes={graphNodes}
+                                        graphEdges={graphEdges}
+                                        roomTimeline={roomTimeline}
+                                        onRoomInspect={() => setIsRoomDetailOpen(true)}
+                                        onCloseRoomDetail={() => setIsRoomDetailOpen(false)}
+                                        isRoomDetailOpen={isRoomDetailOpen}
+                                        roomDetail={roomDetail}
+                                        isRoomDetailLoading={isRoomDetailLoading}
+                                        roomDetailError={roomDetailError}
+                                    />
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <OfficeWorkspace
+                                    rooms={officeRooms}
+                                    activeRoom={activeRoom}
+                                    activeRoomId={activeRoomId}
+                                    onRoomSelect={handleRoomSelect}
+                                    workflowState={workflowState}
+                                    graphOverlayEnabled={graphOverlayEnabled}
+                                    displayMode={resolvedDisplayMode}
+                                    selectedAgent={selectedAgent}
+                                    latestRouting={latestRouting}
+                                    latestAssistantMessage={latestAssistantMessage}
+                                    lastErrorMessage={lastError?.message || null}
+                                    typingAgentName={typing.agentName}
+                                    graphNodes={graphNodes}
+                                    graphEdges={graphEdges}
+                                    roomTimeline={roomTimeline}
+                                    onRoomInspect={() => setIsRoomDetailOpen(true)}
+                                    onCloseRoomDetail={() => setIsRoomDetailOpen(false)}
+                                    isRoomDetailOpen={isRoomDetailOpen}
+                                    roomDetail={roomDetail}
+                                    isRoomDetailLoading={isRoomDetailLoading}
+                                    roomDetailError={roomDetailError}
+                                />
 
-                        <AnalyticsPanel
-                            activeTab={activeWorkspaceTab}
-                            onTabChange={setActiveWorkspaceTab}
-                            availableAgents={availableAgents}
-                            selectedAgentId={selectedAgent?.id || null}
-                            selectedAgentName={selectedAgent?.name || null}
-                            typing={typing}
-                            activityFeed={activityFeed}
-                            officeStats={officeStats}
-                            taskStages={taskStages}
-                            replayItems={replayItems}
-                            latestAssistantMessage={latestAssistantMessage}
-                        />
+                                <AnalyticsPanel
+                                    activeTab={activeWorkspaceTab}
+                                    onTabChange={setActiveWorkspaceTab}
+                                    availableAgents={availableAgents}
+                                    selectedAgentId={selectedAgent?.id || null}
+                                    selectedAgentName={selectedAgent?.name || null}
+                                    typing={typing}
+                                    activityFeed={activityFeed}
+                                    officeStats={officeStats}
+                                    taskStages={taskStages}
+                                    replayItems={replayItems}
+                                    latestAssistantMessage={latestAssistantMessage}
+                                    dagSnapshot={dagSnapshot}
+                                    isDagLoading={isDagLoading}
+                                    dagError={dagError}
+                                    replaySnapshot={replaySnapshot}
+                                    isReplayLoading={isReplayLoading}
+                                    replayError={replayError}
+                                    onReplayFocusRoom={handleReplayFocusRoom}
+                                />
+                            </>
+                        )}
                     </section>
                 </div>
             </div>
@@ -1207,6 +1655,15 @@ interface OfficeWorkspaceProps {
     latestAssistantMessage: ChatMessageState | undefined;
     lastErrorMessage: string | null;
     typingAgentName: string | null;
+    graphNodes: GraphNodeState[];
+    graphEdges: GraphEdgeState[];
+    roomTimeline: RoomTimelineItemState[];
+    onRoomInspect: () => void;
+    onCloseRoomDetail: () => void;
+    isRoomDetailOpen: boolean;
+    roomDetail: RoomDetailState | null;
+    isRoomDetailLoading: boolean;
+    roomDetailError: string | null;
 }
 
 function OfficeWorkspace({
@@ -1222,7 +1679,20 @@ function OfficeWorkspace({
     latestAssistantMessage,
     lastErrorMessage,
     typingAgentName,
+    graphNodes,
+    graphEdges,
+    roomTimeline,
+    onRoomInspect,
+    onCloseRoomDetail,
+    isRoomDetailOpen,
+    roomDetail,
+    isRoomDetailLoading,
+    roomDetailError,
 }: OfficeWorkspaceProps) {
+    const visibleTimeline = roomTimeline.filter((item) => item.roomId === activeRoom.id).slice(0, 6);
+    const graphNodeMap = new Map(graphNodes.map((node) => [node.id, node]));
+    const activeRoomDetail = roomDetail?.room.id === activeRoom.id ? roomDetail : null;
+
     return (
         <div className={`office-workspace display-${displayMode}`}>
             <div className={`workflow-rail workflow-${workflowState}`}>
@@ -1265,21 +1735,35 @@ function OfficeWorkspace({
 
                 {graphOverlayEnabled && (
                     <div className="office-graph-overlay" aria-hidden="true">
-                        {rooms.map((room, index) => (
+                        {graphEdges.map((edge) => {
+                            const fromNode = graphNodeMap.get(edge.fromId);
+                            const toNode = graphNodeMap.get(edge.toId);
+                            if (!fromNode || !toNode) {
+                                return null;
+                            }
+
+                            return (
+                                <div
+                                    key={edge.id}
+                                    className={`graph-link status-${edge.status}`}
+                                    style={buildGraphEdgeStyle(fromNode, toNode)}
+                                >
+                                    <span>{edge.label}</span>
+                                </div>
+                            );
+                        })}
+                        {graphNodes.map((node) => (
                             <div
-                                key={room.id}
-                                className={`graph-node status-${room.status}`}
+                                key={node.id}
+                                className={`graph-node status-${node.status} kind-${node.kind}`}
                                 style={{
-                                    left: `${14 + (index % 3) * 30}%`,
-                                    top: `${16 + Math.floor(index / 3) * 28}%`,
+                                    left: `${node.x * 100}%`,
+                                    top: `${node.y * 100}%`,
                                 }}
                             >
-                                <span>{room.title}</span>
+                                <span>{node.label}</span>
                             </div>
                         ))}
-                        <div className="graph-link graph-link-a" />
-                        <div className="graph-link graph-link-b" />
-                        <div className="graph-link graph-link-c" />
                     </div>
                 )}
 
@@ -1288,6 +1772,13 @@ function OfficeWorkspace({
                         <span className="office-detail-kicker">Room Focus</span>
                         <h3>{activeRoom.title}</h3>
                         <p>{activeRoom.description}</p>
+                        <button
+                            type="button"
+                            className="room-detail-trigger"
+                            onClick={onRoomInspect}
+                        >
+                            {isRoomDetailOpen ? 'Refresh room panel' : 'Open room panel'}
+                        </button>
                     </div>
                     <div className="office-detail-grid">
                         <div className="office-detail-card">
@@ -1319,7 +1810,157 @@ function OfficeWorkspace({
                             <p>{lastErrorMessage || 'Boss office remains on standby until a retry or failure occurs.'}</p>
                         </div>
                     </div>
+                    <div className="room-timeline">
+                        <div className="room-timeline-header">
+                            <span className="office-detail-label">Room Timeline</span>
+                            <strong>{activeRoom.title}</strong>
+                        </div>
+                        {visibleTimeline.length === 0 ? (
+                            <div className="room-timeline-empty">
+                                No persisted room events yet for this area.
+                            </div>
+                        ) : (
+                            visibleTimeline.map((item) => (
+                                <div key={item.id} className={`room-timeline-item severity-${item.severity}`}>
+                                    <div className="room-timeline-meta">
+                                        <strong>{item.type}</strong>
+                                        <span>{formatRelativeTime(item.timestamp)}</span>
+                                    </div>
+                                    <p>{item.description}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
+
+                <AnimatePresence initial={false}>
+                    {isRoomDetailOpen && (
+                        <motion.aside
+                            className="room-detail-drawer"
+                            role="dialog"
+                            aria-modal="false"
+                            aria-label={`${activeRoom.title} detail panel`}
+                            initial={{ opacity: 0, x: 28 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 28 }}
+                            transition={{ duration: 0.24 }}
+                        >
+                            <div className="room-detail-drawer-header">
+                                <div>
+                                    <span className="office-detail-kicker">Deep Inspection</span>
+                                    <h4>{activeRoom.title}</h4>
+                                    <p>{activeRoom.label}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="room-detail-close"
+                                    onClick={onCloseRoomDetail}
+                                    aria-label={`Close ${activeRoom.title} detail panel`}
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+
+                            {isRoomDetailLoading ? (
+                                <div className="room-detail-state" role="status" aria-live="polite">
+                                    <LoaderCircle size={18} className="chat-loading-icon" />
+                                    <span>Loading room detail...</span>
+                                </div>
+                            ) : roomDetailError ? (
+                                <div className="room-detail-state room-detail-state-error" role="alert">
+                                    <AlertCircle size={16} />
+                                    <span>{roomDetailError}</span>
+                                </div>
+                            ) : activeRoomDetail ? (
+                                <div className="room-detail-drawer-body">
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Summary</span>
+                                        <p>{activeRoomDetail.summary}</p>
+                                    </div>
+
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Room Metrics</span>
+                                        <div className="room-detail-metrics">
+                                            {activeRoomDetail.metrics.map((metric) => (
+                                                <div key={metric.label} className="room-detail-metric-card">
+                                                    <strong>{metric.value}</strong>
+                                                    <span>{metric.label}</span>
+                                                    <p>{metric.hint}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Operational Highlights</span>
+                                        <div className="room-detail-list">
+                                            {activeRoomDetail.highlights.map((highlight) => (
+                                                <div key={highlight} className="room-detail-list-item">
+                                                    {highlight}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Available Actions</span>
+                                        <div className="room-detail-list">
+                                            {activeRoomDetail.actions.map((action) => (
+                                                <div key={action} className="room-detail-list-item action-item">
+                                                    {action}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Recent Events</span>
+                                        <div className="room-detail-events">
+                                            {activeRoomDetail.recentEvents.length === 0 ? (
+                                                <div className="room-detail-empty">No persisted room events yet.</div>
+                                            ) : (
+                                                activeRoomDetail.recentEvents.slice(0, 6).map((event) => (
+                                                    <div key={event.id} className={`room-detail-event severity-${event.severity}`}>
+                                                        <div className="room-detail-event-meta">
+                                                            <strong>{event.type}</strong>
+                                                            <span>{formatRelativeTime(event.timestamp)}</span>
+                                                        </div>
+                                                        <p>{event.description}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="room-detail-section">
+                                        <span className="office-detail-label">Related Messages</span>
+                                        <div className="room-detail-messages">
+                                            {activeRoomDetail.relatedMessages.length === 0 ? (
+                                                <div className="room-detail-empty">No related messages recorded for this room.</div>
+                                            ) : (
+                                                activeRoomDetail.relatedMessages.map((message) => (
+                                                    <div key={message.id} className="room-detail-message">
+                                                        <div className="room-detail-message-meta">
+                                                            <strong>
+                                                                {message.sender === 'agent'
+                                                                    ? (message.agentName || 'Assistant')
+                                                                    : 'User'}
+                                                            </strong>
+                                                            <span>{formatRelativeTime(message.createdAt)}</span>
+                                                        </div>
+                                                        <p>{message.content || 'No stored content.'}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="room-detail-empty">Select a room to inspect deeper operational context.</div>
+                            )}
+                        </motion.aside>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
@@ -1337,6 +1978,13 @@ interface AnalyticsPanelProps {
     taskStages: TaskStage[];
     replayItems: Array<{ id: string; type: string; description: string; timestamp: Date }>;
     latestAssistantMessage: ChatMessageState | undefined;
+    dagSnapshot: DagSnapshotState | null;
+    isDagLoading: boolean;
+    dagError: string | null;
+    replaySnapshot: ReplaySnapshotState | null;
+    isReplayLoading: boolean;
+    replayError: string | null;
+    onReplayFocusRoom: (roomId: OfficeRoomId) => void;
 }
 
 function AnalyticsPanel({
@@ -1351,6 +1999,13 @@ function AnalyticsPanel({
     taskStages,
     replayItems,
     latestAssistantMessage,
+    dagSnapshot,
+    isDagLoading,
+    dagError,
+    replaySnapshot,
+    isReplayLoading,
+    replayError,
+    onReplayFocusRoom,
 }: AnalyticsPanelProps) {
     const tabs: Array<{ id: WorkspacePanelTab; label: string; icon: React.ReactNode }> = [
         { id: 'employees', label: 'Active Employees', icon: <Users size={14} /> },
@@ -1444,39 +2099,406 @@ function AnalyticsPanel({
                 )}
 
                 {activeTab === 'dag' && (
-                    <div className="task-dag">
-                        {taskStages.map((stage) => (
-                            <div key={stage.id} className={`task-stage status-${stage.status}`}>
-                                <div className="task-stage-dot" />
-                                <div>
-                                    <strong>{stage.title}</strong>
-                                    <p>{stage.detail}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <TaskDagViewer
+                        dagSnapshot={dagSnapshot}
+                        taskStages={taskStages}
+                        isLoading={isDagLoading}
+                        error={dagError}
+                    />
                 )}
 
                 {activeTab === 'replay' && (
-                    <div className="replay-panel">
-                        <div className="replay-card">
-                            <span className="office-detail-label">Latest Delivery</span>
-                            <strong>{latestAssistantMessage?.agentName || selectedAgentName || 'Waiting for first response'}</strong>
-                            <p>{latestAssistantMessage?.content || 'Replay becomes available after the first completed assistant response.'}</p>
-                        </div>
-                        <div className="activity-feed">
-                            {replayItems.map((item) => (
-                                <div key={`${item.id}-replay`} className="activity-feed-item severity-info">
-                                    <div className="activity-feed-header">
-                                        <strong>{item.type}</strong>
-                                        <span>{formatRelativeTime(item.timestamp)}</span>
-                                    </div>
-                                    <p>{item.description}</p>
-                                </div>
-                            ))}
+                    <ReplayViewer
+                        replaySnapshot={replaySnapshot}
+                        replayItems={replayItems}
+                        latestAssistantMessage={latestAssistantMessage}
+                        selectedAgentName={selectedAgentName}
+                        isLoading={isReplayLoading}
+                        error={replayError}
+                        onReplayFocusRoom={onReplayFocusRoom}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+interface TaskDagViewerProps {
+    dagSnapshot: DagSnapshotState | null;
+    taskStages: TaskStage[];
+    isLoading: boolean;
+    error: string | null;
+}
+
+function TaskDagViewer({ dagSnapshot, taskStages, isLoading, error }: TaskDagViewerProps) {
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+    const defaultSelectedNodeId = dagSnapshot?.latestNodeId
+        || dagSnapshot?.nodes.find((node) => node.status === 'active' || node.status === 'alert')?.id
+        || dagSnapshot?.nodes[0]?.id
+        || null;
+    const effectiveSelectedNodeId = selectedNodeId && dagSnapshot?.nodes.some((node) => node.id === selectedNodeId)
+        ? selectedNodeId
+        : defaultSelectedNodeId;
+    const selectedNode = dagSnapshot?.nodes.find((node) => node.id === effectiveSelectedNodeId)
+        || dagSnapshot?.nodes[0]
+        || null;
+
+    if (isLoading) {
+        return (
+            <div className="analytics-empty" role="status" aria-live="polite">
+                Loading task DAG...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="analytics-empty" role="alert">
+                {error}
+            </div>
+        );
+    }
+
+    if (!dagSnapshot) {
+        return (
+            <div className="task-dag">
+                {taskStages.map((stage) => (
+                    <div key={stage.id} className={`task-stage status-${stage.status}`}>
+                        <div className="task-stage-dot" />
+                        <div>
+                            <strong>{stage.title}</strong>
+                            <p>{stage.detail}</p>
                         </div>
                     </div>
-                )}
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="task-dag-viewer">
+            <div className="task-dag-summary">
+                <div className="task-dag-stat">
+                    <span>Flow Summary</span>
+                    <strong>{dagSnapshot.summary}</strong>
+                </div>
+                <div className="task-dag-stat">
+                    <span>Total Runtime</span>
+                    <strong>{formatDurationMs(dagSnapshot.totalDurationMs) || 'Not captured'}</strong>
+                </div>
+                <div className="task-dag-stat">
+                    <span>Tracked Nodes</span>
+                    <strong>{dagSnapshot.nodes.length}</strong>
+                </div>
+            </div>
+
+            <div className="task-dag-layout">
+                <div className="task-dag-graph">
+                    {dagSnapshot.nodes.map((node) => (
+                        <button
+                            key={node.id}
+                            type="button"
+                            className={`task-dag-node status-${node.status} ${selectedNode?.id === node.id ? 'selected' : ''}`}
+                            onClick={() => setSelectedNodeId(node.id)}
+                            aria-pressed={selectedNode?.id === node.id}
+                        >
+                            <div className="task-dag-node-header">
+                                <strong>{node.title}</strong>
+                                <span>{node.status}</span>
+                            </div>
+                            <p>{node.detail}</p>
+                            <div className="task-dag-node-meta">
+                                <span>{node.assignedAgent || 'No assignee'}</span>
+                                <span>{node.retryCount ? `${node.retryCount} retries` : 'No retries'}</span>
+                            </div>
+                            {node.dependencies.length > 0 && (
+                                <div className="task-dag-dependencies">
+                                    {node.dependencies.map((dependency) => (
+                                        <span key={`${node.id}-${dependency}`} className="dependency-chip">
+                                            {dependency}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="task-dag-detail">
+                    <span className="office-detail-label">Selected Node</span>
+                    <strong>{selectedNode?.title || 'No node selected'}</strong>
+                    <p>{selectedNode?.detail || 'Select a node to inspect its persisted execution details.'}</p>
+                    {selectedNode && (
+                        <div className="task-dag-detail-grid">
+                            <div className="task-dag-detail-card">
+                                <span>Status</span>
+                                <strong>{selectedNode.status}</strong>
+                                <p>Latest persisted phase state</p>
+                            </div>
+                            <div className="task-dag-detail-card">
+                                <span>Assigned Agent</span>
+                                <strong>{selectedNode.assignedAgent || 'Not captured'}</strong>
+                                <p>Latest assignee associated with this phase</p>
+                            </div>
+                            <div className="task-dag-detail-card">
+                                <span>Execution Time</span>
+                                <strong>{formatDurationMs(selectedNode.executionTimeMs) || 'Not captured'}</strong>
+                                <p>Measured from first to last event in this phase</p>
+                            </div>
+                            <div className="task-dag-detail-card">
+                                <span>Evaluation Score</span>
+                                <strong>{formatEvaluationScore(selectedNode.evaluationScore)}</strong>
+                                <p>User or delivery quality signal, if available</p>
+                            </div>
+                            <div className="task-dag-detail-card">
+                                <span>Retry History</span>
+                                <strong>{selectedNode.retryCount}</strong>
+                                <p>Persisted recovery events linked to this phase</p>
+                            </div>
+                            <div className="task-dag-detail-card">
+                                <span>Model Used</span>
+                                <strong>{selectedNode.modelUsed || 'Not captured'}</strong>
+                                <p>Model metadata captured on the persisted response</p>
+                            </div>
+                        </div>
+                    )}
+                    {dagSnapshot.edges.length > 0 && (
+                        <div className="task-dag-edge-list">
+                            {dagSnapshot.edges
+                                .filter((edge) => edge.toId === selectedNode?.id || edge.fromId === selectedNode?.id)
+                                .map((edge) => (
+                                    <div key={edge.id} className={`task-dag-edge-item status-${edge.status}`}>
+                                        <strong>{edge.fromId}</strong>
+                                        <span>{edge.label}</span>
+                                        <strong>{edge.toId}</strong>
+                                    </div>
+                                ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+interface ReplayViewerProps {
+    replaySnapshot: ReplaySnapshotState | null;
+    replayItems: Array<{ id: string; type: string; description: string; timestamp: Date }>;
+    latestAssistantMessage: ChatMessageState | undefined;
+    selectedAgentName: string | null;
+    isLoading: boolean;
+    error: string | null;
+    onReplayFocusRoom: (roomId: OfficeRoomId) => void;
+}
+
+function ReplayViewer({
+    replaySnapshot,
+    replayItems,
+    latestAssistantMessage,
+    selectedAgentName,
+    isLoading,
+    error,
+    onReplayFocusRoom,
+}: ReplayViewerProps) {
+    const [manualReplayIndex, setManualReplayIndex] = useState<number | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const replayIndex = typeof manualReplayIndex === 'number' && replaySnapshot?.frames[manualReplayIndex]
+        ? manualReplayIndex
+        : (replaySnapshot?.currentIndex || 0);
+
+    useEffect(() => {
+        if (!replaySnapshot || !isPlaying || replaySnapshot.frames.length === 0) {
+            return;
+        }
+
+        if (replayIndex >= replaySnapshot.frames.length - 1) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setManualReplayIndex((current) => {
+                const baseIndex = typeof current === 'number' && replaySnapshot.frames[current]
+                    ? current
+                    : (replaySnapshot.currentIndex || 0);
+                const nextIndex = Math.min(baseIndex + 1, replaySnapshot.frames.length - 1);
+                if (nextIndex >= replaySnapshot.frames.length - 1) {
+                    setIsPlaying(false);
+                }
+                return nextIndex;
+            });
+        }, 1100);
+
+        return () => window.clearTimeout(timer);
+    }, [isPlaying, replayIndex, replaySnapshot]);
+
+    useEffect(() => {
+        if (!replaySnapshot) {
+            return;
+        }
+
+        const frame = replaySnapshot.frames[replayIndex];
+        if (frame && isOfficeRoomId(frame.roomId)) {
+            onReplayFocusRoom(frame.roomId);
+        }
+    }, [onReplayFocusRoom, replayIndex, replaySnapshot]);
+
+    if (isLoading) {
+        return (
+            <div className="analytics-empty" role="status" aria-live="polite">
+                Loading replay timeline...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="analytics-empty" role="alert">
+                {error}
+            </div>
+        );
+    }
+
+    if (!replaySnapshot || replaySnapshot.frames.length === 0) {
+        return (
+            <div className="replay-panel">
+                <div className="replay-card">
+                    <span className="office-detail-label">Latest Delivery</span>
+                    <strong>{latestAssistantMessage?.agentName || selectedAgentName || 'Waiting for first response'}</strong>
+                    <p>{latestAssistantMessage?.content || 'Replay becomes available after the first completed assistant response.'}</p>
+                </div>
+                <div className="activity-feed">
+                    {replayItems.map((item) => (
+                        <div key={`${item.id}-replay`} className="activity-feed-item severity-info">
+                            <div className="activity-feed-header">
+                                <strong>{item.type}</strong>
+                                <span>{formatRelativeTime(item.timestamp)}</span>
+                            </div>
+                            <p>{item.description}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    const currentFrame = replaySnapshot.frames[replayIndex] || replaySnapshot.frames[replaySnapshot.currentIndex] || replaySnapshot.frames[0];
+
+    return (
+        <div className="replay-viewer">
+            <div className="replay-card replay-card-featured">
+                <span className="office-detail-label">Current Replay Frame</span>
+                <strong>{currentFrame.type}</strong>
+                <p>{currentFrame.description}</p>
+                <div className="replay-frame-meta">
+                    <span>{currentFrame.agentName || currentFrame.roomTitle || 'Workspace event'}</span>
+                    <span>{formatRelativeTime(currentFrame.timestamp)}</span>
+                    <span>{replayIndex + 1}/{replaySnapshot.frames.length}</span>
+                </div>
+                <div className="replay-focus-chips">
+                    {currentFrame.roomTitle && <span>{currentFrame.roomTitle}</span>}
+                    {currentFrame.agentName && <span>{currentFrame.agentName}</span>}
+                    {currentFrame.focusNodeIds.map((focusNodeId) => (
+                        <span key={`${currentFrame.id}-${focusNodeId}`}>{focusNodeId}</span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="replay-controls">
+                <button
+                    type="button"
+                    className="replay-control-button"
+                    onClick={() => {
+                        setIsPlaying(false);
+                        setManualReplayIndex(0);
+                    }}
+                    aria-label="Rewind replay to the first frame"
+                >
+                    <SkipBack size={14} />
+                    Rewind
+                </button>
+                <button
+                    type="button"
+                    className="replay-control-button"
+                    onClick={() => {
+                        setIsPlaying(false);
+                        setManualReplayIndex((current) => {
+                            const baseIndex = typeof current === 'number'
+                                ? current
+                                : (replaySnapshot.currentIndex || 0);
+                            return Math.max(baseIndex - 1, 0);
+                        });
+                    }}
+                    aria-label="Step backward in replay"
+                >
+                    <RotateCcw size={14} />
+                    Step Back
+                </button>
+                <button
+                    type="button"
+                    className="replay-control-button primary"
+                    onClick={() => {
+                        if (replayIndex >= replaySnapshot.frames.length - 1) {
+                            setManualReplayIndex(0);
+                            setIsPlaying(true);
+                            return;
+                        }
+                        setIsPlaying((current) => !current);
+                    }}
+                    aria-label={isPlaying ? 'Pause replay playback' : 'Play replay playback'}
+                >
+                    {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                    {isPlaying ? 'Pause' : 'Play'}
+                </button>
+                <button
+                    type="button"
+                    className="replay-control-button"
+                    onClick={() => {
+                        setIsPlaying(false);
+                        setManualReplayIndex((current) => {
+                            const baseIndex = typeof current === 'number'
+                                ? current
+                                : (replaySnapshot.currentIndex || 0);
+                            return Math.min(baseIndex + 1, replaySnapshot.frames.length - 1);
+                        });
+                    }}
+                    aria-label="Step forward in replay"
+                >
+                    <SkipForward size={14} />
+                    Step Forward
+                </button>
+                <input
+                    type="range"
+                    min={0}
+                    max={Math.max(replaySnapshot.frames.length - 1, 0)}
+                    value={replayIndex}
+                    onChange={(event) => {
+                        setIsPlaying(false);
+                        setManualReplayIndex(Number(event.target.value));
+                    }}
+                    className="replay-scrubber"
+                    aria-label="Replay frame scrubber"
+                />
+            </div>
+
+            <div className="replay-timeline">
+                {replaySnapshot.frames.map((frame) => (
+                    <button
+                        key={frame.id}
+                        type="button"
+                        className={`replay-timeline-item severity-${frame.severity} ${frame.index === replayIndex ? 'active' : ''}`}
+                        onClick={() => {
+                            setIsPlaying(false);
+                            setManualReplayIndex(frame.index);
+                        }}
+                    >
+                        <div className="replay-timeline-header">
+                            <strong>{frame.type}</strong>
+                            <span>{frame.index + 1}</span>
+                        </div>
+                        <p>{frame.description}</p>
+                    </button>
+                ))}
             </div>
         </div>
     );
@@ -1759,6 +2781,228 @@ function mapWorkspaceReplayItem(item: ChatWorkspaceResponse['replay'][number]) {
     };
 }
 
+function mapWorkspaceRoomDetail(
+    detail: ChatWorkspaceRoomDetailResponse
+): RoomDetailState {
+    return {
+        room: mapWorkspaceRoom(detail.room),
+        summary: detail.summary,
+        metrics: detail.metrics.map(mapWorkspaceStat),
+        highlights: detail.highlights,
+        recentEvents: detail.recent_events.map(mapWorkspaceRoomTimelineItem),
+        relatedMessages: detail.related_messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            sender: message.sender,
+            content: message.content,
+            status: message.status,
+            agentName: message.agent_name || null,
+            createdAt: new Date(message.created_at),
+        })),
+        actions: detail.actions,
+    };
+}
+
+function mapWorkspaceDagSnapshot(snapshot: ChatWorkspaceDagResponse): DagSnapshotState {
+    return {
+        sessionId: snapshot.session_id,
+        summary: snapshot.summary,
+        latestNodeId: snapshot.latest_node_id || null,
+        totalDurationMs: snapshot.total_duration_ms ?? null,
+        nodes: snapshot.nodes.map((node) => ({
+            id: node.id,
+            title: node.title,
+            roomId: node.room_id || null,
+            status: normalizeTaskStageStatus(node.status),
+            detail: node.detail,
+            dependencies: node.dependencies,
+            startedAt: node.started_at ? new Date(node.started_at) : null,
+            completedAt: node.completed_at ? new Date(node.completed_at) : null,
+            executionTimeMs: node.execution_time_ms ?? null,
+            assignedAgent: node.assigned_agent || null,
+            evaluationScore: typeof node.evaluation_score === 'number' ? node.evaluation_score : null,
+            retryCount: node.retry_count,
+            modelUsed: node.model_used || null,
+            eventIds: node.event_ids,
+        })),
+        edges: snapshot.edges.map((edge) => ({
+            id: edge.id,
+            fromId: edge.from_id,
+            toId: edge.to_id,
+            label: edge.label,
+            status: normalizeSeverity(edge.status),
+        })),
+    };
+}
+
+function mapWorkspaceReplaySnapshot(snapshot: ChatWorkspaceReplayResponse): ReplaySnapshotState {
+    return {
+        sessionId: snapshot.session_id,
+        summary: snapshot.summary,
+        currentIndex: snapshot.current_index,
+        startedAt: snapshot.started_at ? new Date(snapshot.started_at) : null,
+        endedAt: snapshot.ended_at ? new Date(snapshot.ended_at) : null,
+        totalDurationMs: snapshot.total_duration_ms ?? null,
+        frames: snapshot.frames.map((frame) => ({
+            id: frame.id,
+            index: frame.index,
+            type: frame.type,
+            description: frame.description,
+            timestamp: new Date(frame.timestamp),
+            severity: normalizeSeverity(frame.severity),
+            roomId: frame.room_id || null,
+            roomTitle: frame.room_title || null,
+            agentName: frame.agent_name || null,
+            relatedMessageId: frame.related_message_id || null,
+            focusNodeIds: frame.focus_node_ids,
+            focusEdgeId: frame.focus_edge_id || null,
+        })),
+    };
+}
+
+function mapWorkspaceGraphNode(
+    node: ChatWorkspaceResponse['graph_nodes'][number]
+): GraphNodeState {
+    return {
+        id: node.id,
+        label: node.label,
+        kind: node.kind,
+        status: normalizeRoomStatus(node.status),
+        x: clampGraphCoordinate(node.x),
+        y: clampGraphCoordinate(node.y),
+    };
+}
+
+function mapWorkspaceGraphEdge(
+    edge: ChatWorkspaceResponse['graph_edges'][number]
+): GraphEdgeState {
+    return {
+        id: edge.id,
+        fromId: edge.from_id,
+        toId: edge.to_id,
+        label: edge.label,
+        status: normalizeSeverity(edge.status),
+    };
+}
+
+function mapWorkspaceRoomTimelineItem(
+    item: ChatWorkspaceResponse['room_timeline'][number]
+): RoomTimelineItemState {
+    return {
+        id: item.id,
+        roomId: item.room_id,
+        roomTitle: item.room_title || null,
+        type: item.type,
+        description: item.description,
+        timestamp: new Date(item.timestamp),
+        severity: normalizeSeverity(item.severity),
+    };
+}
+
+function buildFallbackGraphNodes(
+    rooms: OfficeRoom[],
+    assignedAgentLabel: string | null
+): GraphNodeState[] {
+    const positions: Record<string, { x: number; y: number; kind: string }> = {
+        front_desk: { x: 0.08, y: 0.18, kind: 'intake' },
+        strategy: { x: 0.34, y: 0.2, kind: 'room' },
+        boss: { x: 0.74, y: 0.12, kind: 'room' },
+        voting: { x: 0.74, y: 0.38, kind: 'room' },
+        collaboration: { x: 0.5, y: 0.48, kind: 'room' },
+        memory: { x: 0.26, y: 0.68, kind: 'room' },
+        incubator: { x: 0.74, y: 0.7, kind: 'room' },
+        execution: { x: 0.48, y: 0.76, kind: 'room' },
+        assigned_agent: { x: 0.5, y: 0.9, kind: 'agent' },
+    };
+
+    return [
+        {
+            id: 'front_desk',
+            label: 'Front Desk',
+            kind: 'intake',
+            status: 'active',
+            x: positions.front_desk.x,
+            y: positions.front_desk.y,
+        },
+        ...rooms.map((room) => ({
+            id: room.id,
+            label: room.title,
+            kind: positions[room.id]?.kind || 'room',
+            status: room.status,
+            x: positions[room.id]?.x ?? 0.5,
+            y: positions[room.id]?.y ?? 0.5,
+        })),
+        {
+            id: 'assigned_agent',
+            label: assignedAgentLabel || 'Assigned Agent',
+            kind: 'agent',
+            status: rooms.find((room) => room.id === 'execution')?.status || 'watching',
+            x: positions.assigned_agent.x,
+            y: positions.assigned_agent.y,
+        },
+    ];
+}
+
+function buildFallbackGraphEdges(latestRouting: RoutingMetadata | null): GraphEdgeState[] {
+    const edges: GraphEdgeState[] = [
+        {
+            id: 'edge:intake',
+            fromId: 'front_desk',
+            toId: 'strategy',
+            label: 'TASK_STARTED',
+            status: 'success',
+        },
+        {
+            id: 'edge:route',
+            fromId: 'strategy',
+            toId: 'execution',
+            label: 'AGENT_ASSIGNED',
+            status: 'success',
+        },
+    ];
+
+    if (latestRouting?.startProjectMode) {
+        edges.push({
+            id: 'edge:project',
+            fromId: 'strategy',
+            toId: 'collaboration',
+            label: 'PROJECT_MODE',
+            status: 'info',
+        });
+    }
+
+    if (latestRouting?.source === 'executive_router') {
+        edges.push({
+            id: 'edge:executive',
+            fromId: 'strategy',
+            toId: 'boss',
+            label: 'EXECUTIVE_ROUTER',
+            status: 'warning',
+        });
+    }
+
+    return edges;
+}
+
+function buildGraphEdgeStyle(
+    fromNode: GraphNodeState,
+    toNode: GraphNodeState
+): React.CSSProperties {
+    const fromX = fromNode.x * 100;
+    const fromY = fromNode.y * 100;
+    const deltaX = (toNode.x - fromNode.x) * 100;
+    const deltaY = (toNode.y - fromNode.y) * 100;
+    const width = Math.sqrt((deltaX ** 2) + (deltaY ** 2));
+    const angle = Math.atan2(deltaY, deltaX);
+
+    return {
+        left: `${fromX}%`,
+        top: `${fromY}%`,
+        width: `${width}%`,
+        transform: `translateY(-50%) rotate(${angle}rad)`,
+    };
+}
+
 function mergeWorkspaceActivityFeed(
     workspaceFeed: ActivityFeedItem[],
     localFeed: ActivityFeedItem[]
@@ -1804,6 +3048,24 @@ function normalizeTaskStageStatus(value: string): TaskStage['status'] {
     return value === 'done' || value === 'active' || value === 'waiting' || value === 'alert'
         ? value
         : 'waiting';
+}
+
+function clampGraphCoordinate(value: number): number {
+    if (!Number.isFinite(value)) {
+        return 0.5;
+    }
+
+    return Math.min(0.95, Math.max(0.05, value));
+}
+
+function isOfficeRoomId(value: string | null | undefined): value is OfficeRoomId {
+    return value === 'strategy'
+        || value === 'boss'
+        || value === 'voting'
+        || value === 'collaboration'
+        || value === 'memory'
+        || value === 'incubator'
+        || value === 'execution';
 }
 
 function createClientMessageId(): string {
@@ -2179,6 +3441,31 @@ function formatWorkflowState(
         return 'Response package returning to the front desk.';
     }
     return 'Office floor is stable and awaiting the next turn.';
+}
+
+function formatDurationMs(value: number | null | undefined): string | null {
+    if (typeof value !== 'number' || value < 0) {
+        return null;
+    }
+    if (value < 1000) {
+        return `${value} ms`;
+    }
+
+    const seconds = value / 1000;
+    if (seconds < 60) {
+        return `${seconds >= 10 ? seconds.toFixed(0) : seconds.toFixed(1)} s`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+}
+
+function formatEvaluationScore(value: number | null | undefined): string {
+    if (typeof value !== 'number') {
+        return 'Not captured';
+    }
+    return `${Math.round(value * 100)}%`;
 }
 
 function formatRelativeTime(value: Date): string {

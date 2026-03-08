@@ -12,6 +12,8 @@ from src.domain.models import (
     ChatMessageSender,
     ChatMessageStatus,
     ChatFeedbackType,
+    ChatSessionEvent,
+    ChatSessionEventSeverity,
     ChatSession,
     ChatSessionStatus,
 )
@@ -86,6 +88,22 @@ class ChatRepository:
             metadata=row.get("metadata", {}),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+        )
+
+    def _row_to_event(self, row: dict[str, Any]) -> ChatSessionEvent:
+        return ChatSessionEvent(
+            id=row["id"],
+            session_id=row["session_id"],
+            event_type=row["event_type"],
+            room_id=row.get("room_id"),
+            room_title=row.get("room_title"),
+            description=row["description"],
+            severity=ChatSessionEventSeverity(row["severity"]),
+            related_message_id=row.get("related_message_id"),
+            related_agent_id=row.get("related_agent_id"),
+            payload=row.get("payload", {}),
+            created_at=row["created_at"],
+            updated_at=row["created_at"],
         )
 
     async def create_session(
@@ -535,6 +553,77 @@ class ChatRepository:
 
     async def clear_session(self, session_id: str) -> bool:
         return await self.delete_session(session_id)
+
+    async def create_event(
+        self,
+        *,
+        session_id: str,
+        event_type: str,
+        description: str,
+        room_id: Optional[str] = None,
+        room_title: Optional[str] = None,
+        severity: ChatSessionEventSeverity = ChatSessionEventSeverity.INFO,
+        related_message_id: Optional[str] = None,
+        related_agent_id: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+        event_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+    ) -> ChatSessionEvent:
+        row = await postgres_client.fetchrow(
+            """
+            INSERT INTO chat_session_events (
+                id,
+                session_id,
+                event_type,
+                room_id,
+                room_title,
+                description,
+                severity,
+                related_message_id,
+                related_agent_id,
+                payload,
+                created_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+            )
+            RETURNING *
+            """,
+            event_id or str(uuid4()),
+            session_id,
+            event_type,
+            room_id,
+            room_title,
+            description,
+            severity.value,
+            related_message_id,
+            related_agent_id,
+            payload or {},
+            created_at or self._now(),
+        )
+        if not row:
+            raise RuntimeError("Failed to create chat session event")
+        return self._row_to_event(row)
+
+    async def list_events(
+        self,
+        *,
+        session_id: str,
+        limit: int = 100,
+        room_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        return await postgres_client.fetch(
+            """
+            SELECT *
+            FROM chat_session_events
+            WHERE session_id = $1
+              AND ($2::text IS NULL OR room_id = $2)
+            ORDER BY created_at DESC
+            LIMIT $3
+            """,
+            session_id,
+            room_id,
+            limit,
+        )
 
 
 chat_repository = ChatRepository()

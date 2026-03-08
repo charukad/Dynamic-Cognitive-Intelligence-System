@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import AsyncIterator, Iterable, List, Optional
+from typing import Any, AsyncIterator, Iterable, List, Optional
 from uuid import UUID, uuid4
 
 from src.core import get_logger
@@ -15,6 +15,7 @@ from src.domain.models import (
     ChatMessageRole,
     ChatMessageSender,
     ChatMessageStatus,
+    ChatSessionEventSeverity,
 )
 from src.infrastructure.llm.vllm_client import vllm_client
 from src.infrastructure.repositories import agent_repository
@@ -71,15 +72,139 @@ class MemoryContext:
 class ChatService:
     """Service for chat completions, streaming, and persistence."""
 
+    _ROOM_TITLES = {
+        "strategy": "Strategy Center",
+        "boss": "Boss's Office",
+        "voting": "Voting Chamber",
+        "collaboration": "Collaboration Hub",
+        "memory": "Memory Vault",
+        "incubator": "Specialist Incubator",
+        "execution": "Active Pods",
+    }
+
+    @staticmethod
+    def _fallback_specialized_agent(
+        *,
+        agent_id: str,
+        name: str,
+        agent_type: AgentType,
+        capabilities: list[str],
+        system_prompt: str,
+        temperature: float,
+    ) -> Agent:
+        """Build a deterministic fallback agent when specialized services are unavailable."""
+        return Agent(
+            id=agent_id,
+            name=name,
+            agent_type=agent_type,
+            status=AgentStatus.IDLE,
+            capabilities=capabilities,
+            system_prompt=system_prompt,
+            temperature=temperature,
+        )
+
+    def _load_specialized_agent(self, agent_id: str, factory, fallback: Agent) -> Agent:
+        """Resolve a specialized agent definition without failing service startup."""
+        try:
+            candidate = factory()
+            if isinstance(candidate, Agent):
+                return candidate
+            candidate_agent = getattr(candidate, "agent", None)
+            if isinstance(candidate_agent, Agent):
+                return candidate_agent
+        except Exception as exc:
+            logger.warning(
+                "Failed to initialize specialized agent '%s'; using fallback: %s",
+                agent_id,
+                exc,
+            )
+        return fallback
+
     def __init__(self):
         self.client = vllm_client
+        data_analyst_fallback = self._fallback_specialized_agent(
+            agent_id="data-analyst",
+            name="Data Analyst",
+            agent_type=AgentType.DATA_ANALYST,
+            capabilities=["analysis", "sql", "statistics"],
+            system_prompt=(
+                "You are a data analysis specialist. "
+                "Use evidence from the conversation and provide clear analytical conclusions."
+            ),
+            temperature=0.2,
+        )
+        designer_fallback = self._fallback_specialized_agent(
+            agent_id="designer",
+            name="Designer",
+            agent_type=AgentType.DESIGNER,
+            capabilities=["ui", "ux", "interaction_design"],
+            system_prompt=(
+                "You are a product design specialist. "
+                "Provide concrete UX and UI recommendations aligned to user goals."
+            ),
+            temperature=0.4,
+        )
+        translator_fallback = self._fallback_specialized_agent(
+            agent_id="translator",
+            name="Translator",
+            agent_type=AgentType.TRANSLATOR,
+            capabilities=["translation", "localization"],
+            system_prompt=(
+                "You are a translation specialist. "
+                "Preserve meaning, tone, and context while producing accurate translations."
+            ),
+            temperature=0.1,
+        )
+        financial_fallback = self._fallback_specialized_agent(
+            agent_id="financial",
+            name="Financial Advisor",
+            agent_type=AgentType.FINANCIAL,
+            capabilities=["financial_analysis", "risk_assessment", "planning"],
+            system_prompt=(
+                "You are a financial analysis specialist. "
+                "Provide cautious, actionable recommendations with explicit assumptions."
+            ),
+            temperature=0.2,
+        )
+
+        data_analyst_agent = self._load_specialized_agent(
+            "data-analyst",
+            lambda: create_data_analyst_agent(),
+            data_analyst_fallback,
+        )
+        data_analyst_alias_agent = self._load_specialized_agent(
+            "data_analyst",
+            lambda: create_data_analyst_agent("data_analyst"),
+            data_analyst_fallback.model_copy(update={"id": "data_analyst"}),
+        )
+        designer_agent = self._load_specialized_agent(
+            "designer",
+            lambda: create_designer_agent(),
+            designer_fallback,
+        )
+        translator_agent = self._load_specialized_agent(
+            "translator",
+            lambda: create_translator_agent(),
+            translator_fallback,
+        )
+        financial_agent = self._load_specialized_agent(
+            "financial",
+            lambda: create_financial_advisor_agent("financial"),
+            financial_fallback,
+        )
+        financial_advisor_agent = self._load_specialized_agent(
+            "financial_advisor",
+            lambda: create_financial_advisor_agent(),
+            financial_fallback.model_copy(update={"id": "financial_advisor"}),
+        )
+
         self._builtin_agents = {
-            "data-analyst": create_data_analyst_agent().agent,
-            "data_analyst": create_data_analyst_agent("data_analyst").agent,
-            "designer": create_designer_agent().agent,
-            "translator": create_translator_agent().agent,
-            "financial": create_financial_advisor_agent("financial").agent,
-            "financial_advisor": create_financial_advisor_agent().agent,
+            "data-analyst": data_analyst_agent,
+            "data_analyst": data_analyst_alias_agent,
+            "designer": designer_agent,
+            "translator": translator_agent,
+            "financial": financial_agent,
+            "financial_advisor": financial_advisor_agent,
             "executive": Agent(
                 id="executive",
                 name="Executive Orchestrator",
@@ -642,6 +767,282 @@ class ChatService:
         prompt += "Assistant: "
         return prompt
 
+    @staticmethod
+    def _routing_metadata(route: RouteDecision) -> dict[str, Any]:
+        return {
+            "source": route.route_source,
+            "reason": route.route_reason,
+            "inferred_task_type": route.inferred_task_type,
+            "inferred_agent_type": route.inferred_agent_type,
+            "mode": route.mode,
+            "start_project_mode": route.start_project_mode,
+        }
+
+    async def _record_workspace_event(
+        self,
+        *,
+        session_id: str,
+        event_type: str,
+        description: str,
+        room_id: str,
+        severity: ChatSessionEventSeverity = ChatSessionEventSeverity.INFO,
+        related_message_id: Optional[str] = None,
+        related_agent_id: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+    ) -> None:
+        try:
+            await chat_repository.create_event(
+                session_id=session_id,
+                event_type=event_type,
+                description=description,
+                room_id=room_id,
+                room_title=self._ROOM_TITLES.get(room_id),
+                severity=severity,
+                related_message_id=related_message_id,
+                related_agent_id=related_agent_id,
+                payload=payload,
+            )
+        except Exception as exc:
+            logger.warning("Failed to persist chat workspace event %s for session %s: %s", event_type, session_id, exc)
+
+    async def _record_pre_response_events(
+        self,
+        *,
+        session_id: str,
+        content: str,
+        route: RouteDecision,
+        agent: Agent,
+        memory_context: MemoryContext,
+        user_message_id: Optional[str] = None,
+    ) -> None:
+        routing_metadata = self._routing_metadata(route)
+        task_type = route.inferred_task_type or "general"
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="TASK_STARTED",
+            description=f"New user request entered the office workflow for {task_type} work.",
+            room_id="strategy",
+            severity=ChatSessionEventSeverity.INFO,
+            related_message_id=user_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "request_excerpt": self._truncate(content, 140),
+                "routing": routing_metadata,
+                "graph_edge": {
+                    "from_id": "front_desk",
+                    "to_id": "strategy",
+                    "label": "TASK_STARTED",
+                    "status": "success",
+                },
+            },
+        )
+
+        if memory_context.has_context:
+            await self._record_workspace_event(
+                session_id=session_id,
+                event_type="CONTEXT_RECALLED",
+                description="Session memory and retrieval context were loaded for the current turn.",
+                room_id="memory",
+                severity=ChatSessionEventSeverity.INFO,
+                related_message_id=user_message_id,
+                related_agent_id=str(agent.id),
+                payload={
+                    "memory_turns": len(memory_context.recent_session_memories),
+                    "retrieved_memories": len(memory_context.retrieved_memories),
+                    "has_rag_context": bool(memory_context.rag_context),
+                    "graph_edge": {
+                        "from_id": "strategy",
+                        "to_id": "memory",
+                        "label": "CONTEXT_RECALLED",
+                        "status": "info",
+                    },
+                },
+            )
+
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="ROUTE_DECIDED",
+            description=route.route_reason,
+            room_id="strategy",
+            severity=ChatSessionEventSeverity.INFO,
+            related_message_id=user_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "routing": routing_metadata,
+                "graph_edge": {
+                    "from_id": "strategy",
+                    "to_id": "collaboration" if route.start_project_mode else "execution",
+                    "label": "ROUTE_DECIDED",
+                    "status": "success",
+                },
+            },
+        )
+
+        if route.start_project_mode and route.route_source == "executive_router":
+            await self._record_workspace_event(
+                session_id=session_id,
+                event_type="VOTING_STARTED",
+                description="Executive router triggered a project governance path for this request.",
+                room_id="voting",
+                severity=ChatSessionEventSeverity.WARNING,
+                related_message_id=user_message_id,
+                related_agent_id=str(agent.id),
+                payload={
+                    "routing": routing_metadata,
+                    "graph_edge": {
+                        "from_id": "strategy",
+                        "to_id": "voting",
+                        "label": "VOTING_STARTED",
+                        "status": "warning",
+                    },
+                },
+            )
+
+        if route.start_project_mode:
+            await self._record_workspace_event(
+                session_id=session_id,
+                event_type="COLLABORATION_STARTED",
+                description=f"{agent.name} entered a collaborative project execution path.",
+                room_id="collaboration",
+                severity=ChatSessionEventSeverity.INFO,
+                related_message_id=user_message_id,
+                related_agent_id=str(agent.id),
+                payload={
+                    "routing": routing_metadata,
+                    "graph_edge": {
+                        "from_id": "strategy",
+                        "to_id": "collaboration",
+                        "label": "COLLABORATION_STARTED",
+                        "status": "info",
+                    },
+                },
+            )
+
+        if route.start_project_mode and not route.inferred_agent_type:
+            await self._record_workspace_event(
+                session_id=session_id,
+                event_type="SPECIALIST_GAP_DETECTED",
+                description="Project mode is active without a clear specialist fit; incubator review is available.",
+                room_id="incubator",
+                severity=ChatSessionEventSeverity.WARNING,
+                related_message_id=user_message_id,
+                related_agent_id=str(agent.id),
+                payload={
+                    "routing": routing_metadata,
+                    "graph_edge": {
+                        "from_id": "strategy",
+                        "to_id": "incubator",
+                        "label": "SPECIALIST_GAP_DETECTED",
+                        "status": "warning",
+                    },
+                },
+            )
+
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="AGENT_ASSIGNED",
+            description=f"{agent.name} was assigned to produce the next response.",
+            room_id="execution",
+            severity=ChatSessionEventSeverity.INFO,
+            related_message_id=user_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "agent_name": agent.name,
+                "routing": routing_metadata,
+                "graph_edge": {
+                    "from_id": "strategy",
+                    "to_id": "execution",
+                    "label": "AGENT_ASSIGNED",
+                    "status": "success",
+                },
+            },
+        )
+
+    async def _record_response_started_event(
+        self,
+        *,
+        session_id: str,
+        route: RouteDecision,
+        agent: Agent,
+        assistant_message_id: str,
+    ) -> None:
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="RESPONSE_STARTED",
+            description=f"{agent.name} started generating the assistant response.",
+            room_id="execution",
+            severity=ChatSessionEventSeverity.INFO,
+            related_message_id=assistant_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "routing": self._routing_metadata(route),
+                "graph_edge": {
+                    "from_id": "execution",
+                    "to_id": "assigned_agent",
+                    "label": "RESPONSE_STARTED",
+                    "status": "info",
+                },
+            },
+        )
+
+    async def _record_response_completed_event(
+        self,
+        *,
+        session_id: str,
+        route: RouteDecision,
+        agent: Agent,
+        assistant_message_id: str,
+        assistant_content: str,
+    ) -> None:
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="FINAL_RESPONSE_SENT",
+            description=f"{agent.name} completed the response and returned it to the front desk.",
+            room_id="execution",
+            severity=ChatSessionEventSeverity.SUCCESS,
+            related_message_id=assistant_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "response_excerpt": self._truncate(assistant_content, 180),
+                "routing": self._routing_metadata(route),
+                "graph_edge": {
+                    "from_id": "execution",
+                    "to_id": "front_desk",
+                    "label": "FINAL_RESPONSE_SENT",
+                    "status": "success",
+                },
+            },
+        )
+
+    async def _record_response_failed_event(
+        self,
+        *,
+        session_id: str,
+        route: RouteDecision,
+        agent: Agent,
+        assistant_message_id: str,
+        error: str,
+    ) -> None:
+        await self._record_workspace_event(
+            session_id=session_id,
+            event_type="RETRY_TRIGGERED",
+            description=f"{agent.name} failed to complete the response: {self._truncate(error, 180)}",
+            room_id="boss",
+            severity=ChatSessionEventSeverity.CRITICAL,
+            related_message_id=assistant_message_id,
+            related_agent_id=str(agent.id),
+            payload={
+                "error": error,
+                "routing": self._routing_metadata(route),
+                "graph_edge": {
+                    "from_id": "execution",
+                    "to_id": "boss",
+                    "label": "RETRY_TRIGGERED",
+                    "status": "critical",
+                },
+            },
+        )
+
     async def chat_completion(
         self,
         messages: List[dict],
@@ -698,6 +1099,7 @@ class ChatService:
             route=route,
             memory_context=memory_context,
         )
+        routing_metadata = self._routing_metadata(route)
 
         user_message = await chat_repository.create_message(
             session_id=session_id,
@@ -708,25 +1110,53 @@ class ChatService:
             status=ChatMessageStatus.COMPLETED,
             agent_id=str(agent.id),
             agent_name=agent.name,
-            metadata={**(metadata or {}), "routing": {
-                "source": route.route_source,
-                "reason": route.route_reason,
-                "inferred_task_type": route.inferred_task_type,
-                "inferred_agent_type": route.inferred_agent_type,
-                "mode": route.mode,
-                "start_project_mode": route.start_project_mode,
-            }},
+            metadata={**(metadata or {}), "routing": routing_metadata},
+        )
+
+        await self._record_pre_response_events(
+            session_id=session_id,
+            content=content,
+            route=route,
+            agent=agent,
+            memory_context=memory_context,
+            user_message_id=str(user_message.id),
         )
 
         history_rows = await chat_repository.list_messages(session_id=session_id, limit=50)
         prompt_messages = self._history_to_prompt_messages(history_rows)
+        assistant_message_id = str(uuid4())
+        await self._record_response_started_event(
+            session_id=session_id,
+            route=route,
+            agent=agent,
+            assistant_message_id=assistant_message_id,
+        )
         try:
             assistant_content = await self.chat_completion(
                 messages=prompt_messages,
                 system_prompt=effective_system_prompt,
                 temperature=agent.temperature,
             )
-        except Exception:
+        except Exception as exc:
+            await chat_repository.create_message(
+                session_id=session_id,
+                message_id=assistant_message_id,
+                role=ChatMessageRole.ASSISTANT,
+                sender=ChatMessageSender.AGENT,
+                content="",
+                status=ChatMessageStatus.FAILED,
+                agent_id=str(agent.id),
+                agent_name=agent.name,
+                error_message=str(exc),
+                metadata={"routing": routing_metadata},
+            )
+            await self._record_response_failed_event(
+                session_id=session_id,
+                route=route,
+                agent=agent,
+                assistant_message_id=assistant_message_id,
+                error=str(exc),
+            )
             try:
                 thompson_router.update_performance(agent.id, success=False)
             except Exception:
@@ -735,22 +1165,22 @@ class ChatService:
 
         assistant_message = await chat_repository.create_message(
             session_id=session_id,
+            message_id=assistant_message_id,
             role=ChatMessageRole.ASSISTANT,
             sender=ChatMessageSender.AGENT,
             content=assistant_content,
             status=ChatMessageStatus.COMPLETED,
             agent_id=str(agent.id),
             agent_name=agent.name,
-            metadata={
-                "routing": {
-                    "source": route.route_source,
-                    "reason": route.route_reason,
-                    "inferred_task_type": route.inferred_task_type,
-                    "inferred_agent_type": route.inferred_agent_type,
-                    "mode": route.mode,
-                    "start_project_mode": route.start_project_mode,
-                }
-            },
+            metadata={"routing": routing_metadata},
+        )
+
+        await self._record_response_completed_event(
+            session_id=session_id,
+            route=route,
+            agent=agent,
+            assistant_message_id=str(assistant_message.id),
+            assistant_content=assistant_content,
         )
 
         try:
@@ -808,6 +1238,7 @@ class ChatService:
             route=route,
             memory_context=memory_context,
         )
+        routing_metadata = self._routing_metadata(route)
         now = datetime.now(timezone.utc)
 
         user_message = await chat_repository.create_message(
@@ -819,14 +1250,16 @@ class ChatService:
             status=ChatMessageStatus.COMPLETED,
             agent_id=str(agent.id),
             agent_name=agent.name,
-            metadata={**(metadata or {}), "routing": {
-                "source": route.route_source,
-                "reason": route.route_reason,
-                "inferred_task_type": route.inferred_task_type,
-                "inferred_agent_type": route.inferred_agent_type,
-                "mode": route.mode,
-                "start_project_mode": route.start_project_mode,
-            }},
+            metadata={**(metadata or {}), "routing": routing_metadata},
+        )
+
+        await self._record_pre_response_events(
+            session_id=session_id,
+            content=content,
+            route=route,
+            agent=agent,
+            memory_context=memory_context,
+            user_message_id=str(user_message.id),
         )
 
         assistant_message = await chat_repository.create_message(
@@ -838,16 +1271,14 @@ class ChatService:
             status=ChatMessageStatus.STREAMING,
             agent_id=str(agent.id),
             agent_name=agent.name,
-            metadata={
-                "routing": {
-                    "source": route.route_source,
-                    "reason": route.route_reason,
-                    "inferred_task_type": route.inferred_task_type,
-                    "inferred_agent_type": route.inferred_agent_type,
-                    "mode": route.mode,
-                    "start_project_mode": route.start_project_mode,
-                }
-            },
+            metadata={"routing": routing_metadata},
+        )
+
+        await self._record_response_started_event(
+            session_id=session_id,
+            route=route,
+            agent=agent,
+            assistant_message_id=str(assistant_message.id),
         )
 
         user_row = await chat_repository.get_message(str(user_message.id))
@@ -874,7 +1305,6 @@ class ChatService:
 
         history_rows = await chat_repository.list_messages(session_id=session_id, limit=50)
         prompt_messages = self._history_to_prompt_messages(history_rows[:-1])
-        prompt_messages.append({"role": ChatMessageRole.USER.value, "content": content})
 
         assembled_content = ""
         try:
@@ -914,16 +1344,16 @@ class ChatService:
                 "payload": {
                     "message": final_assistant,
                     "session": session_summary,
-                    "routing": {
-                        "source": route.route_source,
-                        "reason": route.route_reason,
-                        "inferred_task_type": route.inferred_task_type,
-                        "inferred_agent_type": route.inferred_agent_type,
-                        "mode": route.mode,
-                        "start_project_mode": route.start_project_mode,
-                    },
+                    "routing": routing_metadata,
                 },
             }
+            await self._record_response_completed_event(
+                session_id=session_id,
+                route=route,
+                agent=agent,
+                assistant_message_id=str(assistant_message.id),
+                assistant_content=assembled_content,
+            )
             try:
                 thompson_router.update_performance(agent.id, success=True)
             except Exception:
@@ -956,6 +1386,13 @@ class ChatService:
                     "error": str(exc),
                 },
             }
+            await self._record_response_failed_event(
+                session_id=session_id,
+                route=route,
+                agent=agent,
+                assistant_message_id=str(assistant_message.id),
+                error=str(exc),
+            )
             raise
 
 

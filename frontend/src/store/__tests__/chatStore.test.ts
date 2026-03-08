@@ -165,4 +165,58 @@ describe('ChatStore', () => {
         expect(state.isBootstrapping).toBe(false);
         expect(state.isSessionLoading).toBe(false);
     });
+
+    it('maintains long-session continuity and cleans up messages on session deletion', () => {
+        const store = useChatStore.getState();
+        store.setSessions([sessionA, sessionB]);
+        store.setCurrentSessionId('session-a');
+
+        for (let i = 1; i <= 60; i += 1) {
+            store.addOptimisticUserMessage('session-a', {
+                id: `user-${i}`,
+                sessionId: 'session-a',
+                sender: 'user',
+                role: 'user',
+                content: `Question ${i}`,
+                timestamp: new Date(`2026-02-27T12:${String(i % 60).padStart(2, '0')}:00.000Z`),
+                status: 'delivered',
+            });
+            store.upsertMessage('session-a', {
+                id: `assistant-${i}`,
+                sessionId: 'session-a',
+                sender: 'agent',
+                role: 'assistant',
+                content: `Answer ${i}`,
+                timestamp: new Date(`2026-02-27T12:${String(i % 60).padStart(2, '0')}:30.000Z`),
+                status: 'delivered',
+                agentId: 'designer',
+                agentName: 'Designer',
+            });
+        }
+
+        const longSessionMessages = selectCurrentMessages(useChatStore.getState());
+        expect(longSessionMessages).toHaveLength(120);
+        expect(longSessionMessages[0]?.content).toBe('Question 1');
+        expect(longSessionMessages[119]?.content).toBe('Answer 60');
+        expect(useChatStore.getState().sessions[0]?.last_message).toBe('Answer 60');
+
+        store.setCurrentSessionId('session-b');
+        store.addOptimisticUserMessage('session-b', {
+            id: 'user-b-1',
+            sessionId: 'session-b',
+            sender: 'user',
+            role: 'user',
+            content: 'Session B question',
+            timestamp: new Date('2026-02-27T13:00:00.000Z'),
+            status: 'delivered',
+        });
+        expect(selectCurrentMessages(useChatStore.getState())).toHaveLength(1);
+
+        store.removeSession('session-a');
+        const finalState = useChatStore.getState();
+        expect(finalState.messagesBySession['session-a']).toBeUndefined();
+        expect(finalState.sessions.map((session) => session.id)).toEqual(['session-b']);
+        expect(finalState.currentSessionId).toBe('session-b');
+        expect(selectCurrentMessages(finalState)[0]?.content).toBe('Session B question');
+    });
 });

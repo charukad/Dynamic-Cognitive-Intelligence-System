@@ -306,6 +306,205 @@ class ChatWorkspaceReplayItemResponse(BaseModel):
     timestamp: datetime
 
 
+class ChatWorkspaceGraphNodeResponse(BaseModel):
+    """Node in the live office graph overlay."""
+
+    id: str
+    label: str
+    kind: str
+    status: str
+    x: float
+    y: float
+
+
+class ChatWorkspaceGraphEdgeResponse(BaseModel):
+    """Edge in the live office graph overlay."""
+
+    id: str
+    from_id: str
+    to_id: str
+    label: str
+    status: str
+
+
+class ChatWorkspaceRoomTimelineItemResponse(BaseModel):
+    """Timeline item scoped to a single office room."""
+
+    id: str
+    room_id: str
+    room_title: Optional[str] = None
+    type: str
+    description: str
+    timestamp: datetime
+    severity: str
+
+
+class ChatWorkspaceRoomDetailMessageResponse(BaseModel):
+    """Message excerpt relevant to a room-level drill-down panel."""
+
+    id: str
+    role: str
+    sender: str
+    content: str
+    status: str
+    agent_name: Optional[str] = None
+    created_at: datetime
+
+
+class ChatWorkspaceRoomDetailResponse(BaseModel):
+    """Detailed drill-down payload for a single office room."""
+
+    room: ChatWorkspaceRoomResponse
+    summary: str
+    metrics: list[ChatWorkspaceStatResponse]
+    highlights: list[str] = Field(default_factory=list)
+    recent_events: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
+    related_messages: list[ChatWorkspaceRoomDetailMessageResponse] = Field(default_factory=list)
+    actions: list[str] = Field(default_factory=list)
+
+
+class ChatWorkspaceVotingResponse(BaseModel):
+    """Governance/voting room projection."""
+
+    room: ChatWorkspaceRoomResponse
+    status: str
+    decision_outcome: Optional[str] = None
+    participants: list[str] = Field(default_factory=list)
+    criteria: list[str] = Field(default_factory=list)
+    reasoning: list[str] = Field(default_factory=list)
+    events: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
+    metrics: list[ChatWorkspaceStatResponse] = Field(default_factory=list)
+
+
+class ChatWorkspaceCollaborationResponse(BaseModel):
+    """Collaboration room log and working-state projection."""
+
+    room: ChatWorkspaceRoomResponse
+    summary: str
+    participants: list[str] = Field(default_factory=list)
+    shared_working_memory: dict[str, Any] = Field(default_factory=dict)
+    coordination_log: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
+    related_messages: list[ChatWorkspaceRoomDetailMessageResponse] = Field(default_factory=list)
+    metrics: list[ChatWorkspaceStatResponse] = Field(default_factory=list)
+
+
+class ChatWorkspaceIncubatorResponse(BaseModel):
+    """Specialist incubator and hiring-readiness projection."""
+
+    room: ChatWorkspaceRoomResponse
+    status: str
+    summary: str
+    gap_detected: bool
+    inferred_specialist: Optional[str] = None
+    benchmark_signals: list[str] = Field(default_factory=list)
+    events: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
+    metrics: list[ChatWorkspaceStatResponse] = Field(default_factory=list)
+    actions: list[str] = Field(default_factory=list)
+
+
+class ChatWorkspaceMemoryTurnResponse(BaseModel):
+    """Working-memory turn retained for memory-vault inspection."""
+
+    user: str
+    assistant: str
+    agent_id: Optional[str] = None
+    agent_name: Optional[str] = None
+    mode: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
+class ChatWorkspaceMemoryItemResponse(BaseModel):
+    """Episodic memory item surfaced in the memory vault."""
+
+    id: str
+    content: str
+    importance_score: float
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
+
+
+class ChatWorkspaceMemoryVaultResponse(BaseModel):
+    """Memory-vault inspection payload."""
+
+    room: ChatWorkspaceRoomResponse
+    summary: str
+    working_context: dict[str, Any] = Field(default_factory=dict)
+    preference_signals: list[str] = Field(default_factory=list)
+    retrieval_events: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
+    recent_turns: list[ChatWorkspaceMemoryTurnResponse] = Field(default_factory=list)
+    episodic_memories: list[ChatWorkspaceMemoryItemResponse] = Field(default_factory=list)
+    metrics: list[ChatWorkspaceStatResponse] = Field(default_factory=list)
+
+
+class ChatWorkspaceDagNodeResponse(BaseModel):
+    """Node in the task DAG projection."""
+
+    id: str
+    title: str
+    room_id: Optional[str] = None
+    status: str
+    detail: str
+    dependencies: list[str] = Field(default_factory=list)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    execution_time_ms: Optional[int] = None
+    assigned_agent: Optional[str] = None
+    evaluation_score: Optional[float] = None
+    retry_count: int = 0
+    model_used: Optional[str] = None
+    event_ids: list[str] = Field(default_factory=list)
+
+
+class ChatWorkspaceDagEdgeResponse(BaseModel):
+    """Dependency edge in the task DAG projection."""
+
+    id: str
+    from_id: str
+    to_id: str
+    label: str
+    status: str
+
+
+class ChatWorkspaceDagResponse(BaseModel):
+    """Task DAG view derived from persisted workspace events."""
+
+    session_id: str
+    summary: str
+    latest_node_id: Optional[str] = None
+    total_duration_ms: Optional[int] = None
+    nodes: list[ChatWorkspaceDagNodeResponse] = Field(default_factory=list)
+    edges: list[ChatWorkspaceDagEdgeResponse] = Field(default_factory=list)
+
+
+class ChatWorkspaceReplayFrameResponse(BaseModel):
+    """Single replay frame derived from a persisted workspace event."""
+
+    id: str
+    index: int
+    type: str
+    description: str
+    timestamp: datetime
+    severity: str
+    room_id: Optional[str] = None
+    room_title: Optional[str] = None
+    agent_name: Optional[str] = None
+    related_message_id: Optional[str] = None
+    focus_node_ids: list[str] = Field(default_factory=list)
+    focus_edge_id: Optional[str] = None
+
+
+class ChatWorkspaceReplayResponse(BaseModel):
+    """Replay controls payload derived from persisted workspace events."""
+
+    session_id: str
+    summary: str
+    current_index: int = 0
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    total_duration_ms: Optional[int] = None
+    frames: list[ChatWorkspaceReplayFrameResponse] = Field(default_factory=list)
+
+
 class ChatWorkspaceResponse(BaseModel):
     """Workspace projection derived from persisted chat state."""
 
@@ -316,4 +515,7 @@ class ChatWorkspaceResponse(BaseModel):
     office_stats: list[ChatWorkspaceStatResponse]
     task_stages: list[ChatWorkspaceTaskStageResponse]
     replay: list[ChatWorkspaceReplayItemResponse]
+    graph_nodes: list[ChatWorkspaceGraphNodeResponse] = Field(default_factory=list)
+    graph_edges: list[ChatWorkspaceGraphEdgeResponse] = Field(default_factory=list)
+    room_timeline: list[ChatWorkspaceRoomTimelineItemResponse] = Field(default_factory=list)
     working_context: dict[str, Any] = Field(default_factory=dict)

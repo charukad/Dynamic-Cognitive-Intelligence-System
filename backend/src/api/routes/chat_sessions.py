@@ -5,11 +5,18 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from src.core import get_logger
 from src.infrastructure.repositories.chat_repository import chat_repository
 from src.schemas import (
+    ChatWorkspaceCollaborationResponse,
+    ChatWorkspaceDagResponse,
+    ChatWorkspaceIncubatorResponse,
+    ChatWorkspaceMemoryVaultResponse,
+    ChatWorkspaceReplayResponse,
     ChatSessionCreate,
     ChatSessionListResponse,
     ChatSessionResponse,
     ChatSessionUpdate,
+    ChatWorkspaceRoomDetailResponse,
     ChatWorkspaceResponse,
+    ChatWorkspaceVotingResponse,
 )
 from src.services.chat.request_controls import (
     ChatRateLimitExceeded,
@@ -251,6 +258,308 @@ async def get_chat_workspace(request: Request, session_id: str) -> ChatWorkspace
             exc_info=True,
         )
         logger.error("Failed to get chat workspace: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/rooms/{room_id}", response_model=ChatWorkspaceRoomDetailResponse)
+async def get_chat_workspace_room(
+    request: Request,
+    session_id: str,
+    room_id: str,
+) -> ChatWorkspaceRoomDetailResponse:
+    """Return the room-specific drill-down projection for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_room",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        room_id = validate_identifier(room_id, "room_id") or room_id
+        payload = await chat_workspace_service.get_room_detail(session_id, room_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceRoomDetailResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(
+            context,
+            status_code=429,
+            error_code="rate_limit_exceeded",
+            detail=str(exc),
+        )
+        raise HTTPException(
+            status_code=429,
+            detail="Chat workspace room lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(
+            context,
+            status_code=500,
+            error_code=type(exc).__name__,
+            detail=str(exc),
+            exc_info=True,
+        )
+        logger.error("Failed to get chat workspace room detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/voting", response_model=ChatWorkspaceVotingResponse)
+async def get_chat_workspace_voting(request: Request, session_id: str) -> ChatWorkspaceVotingResponse:
+    """Return dedicated governance/voting room data for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_voting",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_voting_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceVotingResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat voting workspace lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get voting workspace detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/collaboration", response_model=ChatWorkspaceCollaborationResponse)
+async def get_chat_workspace_collaboration(
+    request: Request,
+    session_id: str,
+) -> ChatWorkspaceCollaborationResponse:
+    """Return dedicated collaboration log data for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_collaboration",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_collaboration_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceCollaborationResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat collaboration workspace lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get collaboration workspace detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/incubator", response_model=ChatWorkspaceIncubatorResponse)
+async def get_chat_workspace_incubator(request: Request, session_id: str) -> ChatWorkspaceIncubatorResponse:
+    """Return dedicated specialist-incubator and hiring detail for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_incubator",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_incubator_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceIncubatorResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat incubator workspace lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get incubator workspace detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/memory-vault", response_model=ChatWorkspaceMemoryVaultResponse)
+async def get_chat_workspace_memory_vault(
+    request: Request,
+    session_id: str,
+) -> ChatWorkspaceMemoryVaultResponse:
+    """Return dedicated memory-vault inspection data for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_memory_vault",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_memory_vault_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceMemoryVaultResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat memory-vault lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get memory-vault detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/dag", response_model=ChatWorkspaceDagResponse)
+async def get_chat_workspace_dag(request: Request, session_id: str) -> ChatWorkspaceDagResponse:
+    """Return the event-backed task DAG projection for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_dag",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_dag_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceDagResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat DAG lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get task DAG detail: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/chat/sessions/{session_id}/workspace/replay", response_model=ChatWorkspaceReplayResponse)
+async def get_chat_workspace_replay(request: Request, session_id: str) -> ChatWorkspaceReplayResponse:
+    """Return the event-backed replay projection for a chat workspace."""
+    context = build_http_request_context(
+        request,
+        route_name="chat_sessions.workspace_replay",
+        session_id=session_id,
+    )
+    try:
+        await chat_rate_limiter.enforce(
+            scope=ChatRateLimitScope.SESSION_READ,
+            client_id=context.client_id,
+            session_id=session_id,
+        )
+        session_id = validate_identifier(session_id, "session_id") or session_id
+        payload = await chat_workspace_service.get_replay_detail(session_id)
+        record_chat_success(context, status_code=200)
+        return ChatWorkspaceReplayResponse(**payload)
+    except ChatRateLimitExceeded as exc:
+        record_chat_failure(context, status_code=429, error_code="rate_limit_exceeded", detail=str(exc))
+        raise HTTPException(
+            status_code=429,
+            detail="Chat replay lookup rate limit exceeded",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except ValueError as exc:
+        status_code = 404 if "not found" in str(exc).lower() else 400
+        record_chat_failure(
+            context,
+            status_code=status_code,
+            error_code="not_found" if status_code == 404 else "validation_failed",
+            detail=str(exc),
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except Exception as exc:
+        record_chat_failure(context, status_code=500, error_code=type(exc).__name__, detail=str(exc), exc_info=True)
+        logger.error("Failed to get replay detail: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
