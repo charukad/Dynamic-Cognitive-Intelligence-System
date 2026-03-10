@@ -45,6 +45,12 @@ import {
 
 import ChatHistorySidebar from './ChatHistorySidebar';
 import {
+    Office3DWorkspace,
+    type Office3DAgent,
+    type Office3DRoom,
+    type Office3DTask,
+} from './Office3DWorkspace';
+import {
     ChatMessageRecord,
     ChatSessionSummary,
     ChatWorkspaceDagResponse,
@@ -1106,8 +1112,8 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
                 timestamp: item.timestamp,
                 severity: item.severity,
             }));
-    const effectiveGraphOverlayEnabled = isFullscreen && fullscreenWorkspaceView === 'live_graph'
-        ? true
+    const effectiveGraphOverlayEnabled = isFullscreen
+        ? fullscreenWorkspaceView === 'live_graph'
         : graphOverlayEnabled;
 
     const getFullscreenElement = () => {
@@ -1524,7 +1530,7 @@ export function ChatInterface({ embedded = false }: { embedded?: boolean }) {
                                         ))}
                                     </div>
                                 )}
-                                {(!isFullscreen || fullscreenWorkspaceView === 'workspace') && (
+                                {!isFullscreen && (
                                     <button
                                         type="button"
                                         className={`overlay-toggle ${graphOverlayEnabled ? 'active' : ''}`}
@@ -1692,6 +1698,32 @@ function OfficeWorkspace({
     const visibleTimeline = roomTimeline.filter((item) => item.roomId === activeRoom.id).slice(0, 6);
     const graphNodeMap = new Map(graphNodes.map((node) => [node.id, node]));
     const activeRoomDetail = roomDetail?.room.id === activeRoom.id ? roomDetail : null;
+    const shouldRender3DWorkspace = displayMode === 'full_simulation'
+        && !graphOverlayEnabled
+        && typeof navigator !== 'undefined'
+        && !navigator.userAgent.toLowerCase().includes('jsdom');
+    const leadAgentName = latestAssistantMessage?.agentName || selectedAgent?.name || 'Executive Orchestrator';
+    const officeRooms3D: Office3DRoom[] = rooms.map((room) => ({
+        id: room.id,
+        title: room.title,
+        label: room.label,
+        status: room.status,
+        metric: room.metric,
+    }));
+    const officeTasks3D: Office3DTask[] = roomTimeline.map((item) => ({
+        id: item.id,
+        roomId: item.roomId,
+        type: item.type,
+        description: item.description,
+        severity: item.severity,
+    }));
+    const officeAgents3D: Office3DAgent[] = rooms.map((room, index) => ({
+        id: `${room.id}-agent-${index}`,
+        name: room.id === activeRoomId ? leadAgentName : `${room.title} Agent`,
+        roomId: room.id,
+        status: room.status,
+        task: roomTimeline.find((item) => item.roomId === room.id)?.description || room.metric,
+    }));
 
     return (
         <div className={`office-workspace display-${displayMode}`}>
@@ -1707,64 +1739,80 @@ function OfficeWorkspace({
                 <span className="workflow-rail-label">Delivery</span>
             </div>
 
-            <div className="office-stage">
-                <div className="office-stage-grid">
-                    {rooms.map((room) => (
-                        <button
-                            key={room.id}
-                            type="button"
-                            className={`office-room-card status-${room.status} ${room.id === activeRoomId ? 'active' : ''}`}
-                            onClick={() => onRoomSelect(room.id)}
-                            aria-pressed={room.id === activeRoomId}
-                        >
-                            <div className="office-room-header">
-                                <div className="office-room-icon">{getRoomIcon(room.id)}</div>
-                                <div>
-                                    <span className="office-room-label">{room.label}</span>
-                                    <h3>{room.title}</h3>
-                                </div>
-                            </div>
-                            <p>{room.detail}</p>
-                            <div className="office-room-footer">
-                                <span className="office-room-metric">{room.metric}</span>
-                                <span className={`office-room-status status-${room.status}`}>{room.status}</span>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-
-                {graphOverlayEnabled && (
-                    <div className="office-graph-overlay" aria-hidden="true">
-                        {graphEdges.map((edge) => {
-                            const fromNode = graphNodeMap.get(edge.fromId);
-                            const toNode = graphNodeMap.get(edge.toId);
-                            if (!fromNode || !toNode) {
-                                return null;
+            <div className={`office-stage ${shouldRender3DWorkspace ? 'office-stage-3d' : ''}`}>
+                {shouldRender3DWorkspace ? (
+                    <Office3DWorkspace
+                        rooms={officeRooms3D}
+                        activeRoomId={activeRoomId}
+                        tasks={officeTasks3D}
+                        agents={officeAgents3D}
+                        onRoomSelect={(roomId) => {
+                            if (isOfficeRoomId(roomId)) {
+                                onRoomSelect(roomId);
                             }
-
-                            return (
-                                <div
-                                    key={edge.id}
-                                    className={`graph-link status-${edge.status}`}
-                                    style={buildGraphEdgeStyle(fromNode, toNode)}
+                        }}
+                    />
+                ) : (
+                    <>
+                        <div className="office-stage-grid">
+                            {rooms.map((room) => (
+                                <button
+                                    key={room.id}
+                                    type="button"
+                                    className={`office-room-card status-${room.status} ${room.id === activeRoomId ? 'active' : ''}`}
+                                    onClick={() => onRoomSelect(room.id)}
+                                    aria-pressed={room.id === activeRoomId}
                                 >
-                                    <span>{edge.label}</span>
-                                </div>
-                            );
-                        })}
-                        {graphNodes.map((node) => (
-                            <div
-                                key={node.id}
-                                className={`graph-node status-${node.status} kind-${node.kind}`}
-                                style={{
-                                    left: `${node.x * 100}%`,
-                                    top: `${node.y * 100}%`,
-                                }}
-                            >
-                                <span>{node.label}</span>
+                                    <div className="office-room-header">
+                                        <div className="office-room-icon">{getRoomIcon(room.id)}</div>
+                                        <div>
+                                            <span className="office-room-label">{room.label}</span>
+                                            <h3>{room.title}</h3>
+                                        </div>
+                                    </div>
+                                    <p>{room.detail}</p>
+                                    <div className="office-room-footer">
+                                        <span className="office-room-metric">{room.metric}</span>
+                                        <span className={`office-room-status status-${room.status}`}>{room.status}</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        {graphOverlayEnabled && (
+                            <div className="office-graph-overlay" aria-hidden="true">
+                                {graphEdges.map((edge) => {
+                                    const fromNode = graphNodeMap.get(edge.fromId);
+                                    const toNode = graphNodeMap.get(edge.toId);
+                                    if (!fromNode || !toNode) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <div
+                                            key={edge.id}
+                                            className={`graph-link status-${edge.status}`}
+                                            style={buildGraphEdgeStyle(fromNode, toNode)}
+                                        >
+                                            <span>{edge.label}</span>
+                                        </div>
+                                    );
+                                })}
+                                {graphNodes.map((node) => (
+                                    <div
+                                        key={node.id}
+                                        className={`graph-node status-${node.status} kind-${node.kind}`}
+                                        style={{
+                                            left: `${node.x * 100}%`,
+                                            top: `${node.y * 100}%`,
+                                        }}
+                                    >
+                                        <span>{node.label}</span>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </>
                 )}
 
                 <div className="office-detail-panel">
