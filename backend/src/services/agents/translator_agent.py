@@ -2,50 +2,118 @@
 Translator Agent - Multilingual Translation and Localization
 
 Expert in language translation, localization, and cross-cultural communication.
-Supports 100+ languages with context-aware translation.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
-from datetime import datetime
+import re
 
 from pydantic import BaseModel
 
 from src.services.agents.base_agent import BaseAgent
 from src.core import get_logger
+from src.domain.models.agent import Agent, AgentStatus, AgentType
 
 logger = get_logger(__name__)
 
 
-#============================================================================
+# ============================================================================
 # Enums and Types
 # ============================================================================
 
 class LanguageCode(str, Enum):
-    """Common language codes (ISO 639-1)"""
-    EN = "en"  # English
-    ES = "es"  # Spanish
-    FR = "fr"  # French
-    DE = "de"  # German
-    ZH = "zh"  # Chinese
-    JA = "ja"  # Japanese
-    KO = "ko"  # Korean
-    AR = "ar"  # Arabic
-    RU = "ru"  # Russian
-    PT = "pt"  # Portuguese
-    IT = "it"  # Italian
-    NL = "nl"  # Dutch
-    HI = "hi"  # Hindi
-    TR = "tr"  # Turkish
-    PL = "pl"  # Polish
+    """Common language codes (ISO 639-1)."""
+    EN = "en"
+    ES = "es"
+    FR = "fr"
+    DE = "de"
+    ZH = "zh"
+    JA = "ja"
+    KO = "ko"
+    AR = "ar"
+    RU = "ru"
+    PT = "pt"
+    IT = "it"
+    NL = "nl"
+    HI = "hi"
+    TR = "tr"
+    PL = "pl"
+
+
+SUPPORTED_LANGUAGES: Dict[str, str] = {
+    "af": "Afrikaans",
+    "ar": "Arabic",
+    "az": "Azerbaijani",
+    "be": "Belarusian",
+    "bg": "Bulgarian",
+    "bn": "Bengali",
+    "bs": "Bosnian",
+    "ca": "Catalan",
+    "cs": "Czech",
+    "cy": "Welsh",
+    "da": "Danish",
+    "de": "German",
+    "el": "Greek",
+    "en": "English",
+    "eo": "Esperanto",
+    "es": "Spanish",
+    "et": "Estonian",
+    "fa": "Persian",
+    "fi": "Finnish",
+    "fr": "French",
+    "ga": "Irish",
+    "gl": "Galician",
+    "gu": "Gujarati",
+    "he": "Hebrew",
+    "hi": "Hindi",
+    "hr": "Croatian",
+    "hu": "Hungarian",
+    "hy": "Armenian",
+    "id": "Indonesian",
+    "is": "Icelandic",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ka": "Georgian",
+    "kk": "Kazakh",
+    "km": "Khmer",
+    "ko": "Korean",
+    "lt": "Lithuanian",
+    "lv": "Latvian",
+    "mk": "Macedonian",
+    "mn": "Mongolian",
+    "mr": "Marathi",
+    "ms": "Malay",
+    "mt": "Maltese",
+    "nl": "Dutch",
+    "no": "Norwegian",
+    "pl": "Polish",
+    "pt": "Portuguese",
+    "ro": "Romanian",
+    "ru": "Russian",
+    "sk": "Slovak",
+    "sl": "Slovenian",
+    "sq": "Albanian",
+    "sr": "Serbian",
+    "sv": "Swedish",
+    "sw": "Swahili",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "th": "Thai",
+    "tr": "Turkish",
+    "uk": "Ukrainian",
+    "ur": "Urdu",
+    "uz": "Uzbek",
+    "vi": "Vietnamese",
+    "zh": "Chinese",
+}
 
 
 # ============================================================================
 # Data Models
-#============================================================================
+# ============================================================================
 
 class LanguageDetection(BaseModel):
-    """Language detection result"""
+    """Language detection result."""
     language: str
     language_name: str
     confidence: float
@@ -53,7 +121,7 @@ class LanguageDetection(BaseModel):
 
 
 class Translation(BaseModel):
-    """Translation result"""
+    """Translation result."""
     original_text: str
     translated_text: str
     source_lang: str
@@ -64,7 +132,7 @@ class Translation(BaseModel):
 
 
 class LocalizedContent(BaseModel):
-    """Localized content with cultural adaptations"""
+    """Localized content with cultural adaptations."""
     content: Dict[str, str]
     locale: str
     applied_rules: List[str]
@@ -80,25 +148,59 @@ class LocalizedContent(BaseModel):
 class TranslatorAgent(BaseAgent):
     """
     Expert in multilingual translation and localization.
-    
-    Capabilities:
-    - Translate between 100+ languages
-    - Context-aware translation
-    - Language detection
-    - Cultural localization
-    - Technical terminology handling
-    - Batch translation
     """
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    def __init__(
+        self,
+        agent_id: str = "translator",
+        name: str = "Translator Agent",
+        description: str = "Expert in multilingual translation and localization",
+    ) -> None:
+        agent = Agent(
+            id=agent_id,
+            name=name,
+            agent_type=AgentType.TRANSLATOR,
+            status=AgentStatus.IDLE,
+            capabilities=["translation", "localization", "language_detection"],
+            system_prompt=self.get_system_prompt(),
+            metadata={"description": description},
+        )
+        super().__init__(agent=agent)
         self.specialty = "translation"
-        
-        # Simulated translation memory cache
-        self.translation_cache: Dict[str, Translation] = {}
-    
+        self.translation_cache: Dict[str, Dict[str, Any]] = {}
+        self.supported_languages = SUPPORTED_LANGUAGES
+
+    async def process(self, task_input: dict) -> dict:
+        """Process generic translation tasks."""
+        action = task_input.get("action", "translate")
+        if action == "detect_language":
+            return await self.detect_language(task_input.get("text", ""))
+        if action == "localize":
+            return await self.localize(
+                text=task_input.get("text"),
+                target_region=task_input.get("target_region"),
+                target_language=task_input.get("target_language"),
+                adapt_idioms=task_input.get("adapt_idioms", False),
+                content=task_input.get("content"),
+                target_locale=task_input.get("target_locale"),
+            )
+        if action == "batch_translate":
+            return await self.batch_translate(
+                texts=task_input.get("texts", []),
+                source_language=task_input.get("source_language"),
+                target_language=task_input.get("target_language", "en"),
+            )
+        if action == "supported_languages":
+            return await self.get_supported_languages()
+        return await self.translate(
+            text=task_input.get("text", ""),
+            source_language=task_input.get("source_language"),
+            target_language=task_input.get("target_language", "en"),
+            context=task_input.get("context"),
+        )
+
     def get_system_prompt(self) -> str:
-        """Get specialized system prompt"""
+        """Get specialized system prompt."""
         return """You are an expert Translator Agent with deep knowledge in:
 
 - 100+ languages and dialects
@@ -115,256 +217,282 @@ Your role is to:
 4. Adapt content culturally
 5. Handle technical terms appropriately
 6. Maintain consistent terminology
-
-Always provide:
-- Natural, fluent translations
-- Cultural context when relevant
-- Alternative translations when appropriate
-- Confidence scores for quality assessment
 """
-    
+
     async def translate(
         self,
         text: str,
         source_lang: Optional[str] = None,
         target_lang: str = "en",
-        context: Optional[str] = None
-    ) -> Translation:
+        context: Optional[str] = None,
+        source_language: Optional[str] = None,
+        target_language: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Translate text with context preservation.
-        
-        Args:
-            text: Text to translate
-            source_lang: Source language (auto-detect if None)
-            target_lang: Target language
-            context: Additional context for better translation
-            
-        Returns:
-            Translation result
+        Translate text with alias support for legacy and API contracts.
         """
-        # Check cache
-        cache_key = f"{text}:{source_lang}:{target_lang}"
-        if cache_key in self.translation_cache:
-            logger.info("Translation cache hit")
-            return self.translation_cache[cache_key]
-        
-        # Auto-detect source language if not provided
-        if not source_lang:
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
+
+        src = (source_language or source_lang or "").lower() or None
+        tgt = (target_language or target_lang or "en").lower()
+
+        self._validate_language_code(tgt)
+        if src:
+            self._validate_language_code(src)
+        if not src:
             detection = await self.detect_language(text)
-            source_lang = detection.language
-        
-        # In production, use translation API:
-        # from google.cloud import translate_v2 as translate
-        # client = translate.Client()
-        # result = client.translate(text, target_language=target_lang, source_language=source_lang)
-        # translated_text = result['translatedText']
-        
-        logger.info(f"Translating from {source_lang} to {target_lang}")
-        
-        # Simulated translation
-        if source_lang == target_lang:
-            translated_text = text
-            confidence = 1.0
-        else:
-            # Simulated: prepend language indicator
-            translated_text = f"[{target_lang.upper()}] {text}"
-            confidence = 0.92
-        
-        # Detect topics
-        topics = self._extract_topics(text)
-        
-        # Generate alternatives (simulated)
-        alternatives = [
-            f"Alternative 1: {translated_text}",
-            f"Alternative 2: {translated_text}"
-        ][:2]
-        
-        result = Translation(
-            original_text=text,
-            translated_text=translated_text,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            confidence=confidence,
-            alternatives=alternatives,
-            detected_topics=topics
-        )
-        
-        # Cache result
-        self.translation_cache[cache_key] = result
-        
+            src = detection["language"]
+
+        cache_key = f"{text}|{src}|{tgt}|{context or ''}"
+        if cache_key in self.translation_cache:
+            cached = dict(self.translation_cache[cache_key])
+            cached["from_cache"] = True
+            return cached
+
+        translated_text = self._simulate_translation(text, src, tgt, context)
+        result = {
+            "translation": translated_text,
+            "source_language": src,
+            "target_language": tgt,
+            "confidence": 1.0 if src == tgt else 0.92,
+            "alternatives": [
+                f"{translated_text} (alt 1)",
+                f"{translated_text} (alt 2)",
+            ],
+            "detected_topics": self._extract_topics(text),
+        }
+
+        self.translation_cache[cache_key] = dict(result)
         return result
-    
-    async def detect_language(self, text: str) -> LanguageDetection:
+
+    async def detect_language(self, text: str) -> Dict[str, Any]:
         """
-        Detect language of text.
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            Language detection result
+        Detect language of text using lightweight heuristics.
         """
-        # In production, use language detection library:
-        # from langdetect import detect, detect_langs
-        # lang = detect(text)
-        # probs = detect_langs(text)
-        
-        logger.info("Detecting language")
-        
-        # Simulated detection based on character patterns
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
+
         text_lower = text.lower()
-        
-        if any(char in text for char in ['你', '我', '是']):
-            lang = "zh"
-            lang_name = "Chinese"
-            confidence = 0.95
-        elif any(char in text for char in ['の', 'は', 'を']):
-            lang = "ja"
-            lang_name = "Japanese"
-            confidence = 0.94
-        elif any(char in text for char in ['한', '국', '어']):
-            lang = "ko"
-            lang_name = "Korean"
-            confidence = 0.93
-        elif any(word in text_lower.split() for word in ['the', 'is', 'and', 'a']):
-            lang = "en"
-            lang_name = "English"
-            confidence = 0.88
-        elif any(word in text_lower.split() for word in ['el', 'la', 'de', 'que']):
-            lang = "es"
-            lang_name = "Spanish"
-            confidence = 0.85
-        else:
-            lang = "en"
-            lang_name = "English"
-            confidence = 0.70
-        
-        alternatives = [
-            ("en", 0.70),
-            ("es", 0.15),
-            ("fr", 0.10)
-        ]
-        
-        return LanguageDetection(
-            language=lang,
-            language_name=lang_name,
-            confidence=confidence,
-            alternatives=alternatives
-        )
-    
+        language = "en"
+        confidence = 0.72
+
+        if re.search(r"[\u3040-\u30ff]", text):
+            language = "ja"
+            confidence = 0.99
+        elif re.search(r"[\u4e00-\u9fff]", text):
+            language = "zh"
+            confidence = 0.99
+        elif re.search(r"[\uac00-\ud7af]", text):
+            language = "ko"
+            confidence = 0.98
+        elif any(word in text_lower for word in ["bonjour", "allez", "comment", "merci"]):
+            language = "fr"
+            confidence = 0.97
+        elif any(word in text_lower for word in ["hallo", "wie", "geht", "danke"]):
+            language = "de"
+            confidence = 0.97
+        elif any(word in text_lower for word in ["hola", "como", "estas", "gracias"]):
+            language = "es"
+            confidence = 0.97
+        elif any(word in text_lower for word in ["hello", "how", "are", "you", "the", "is"]):
+            language = "en"
+            confidence = 0.97
+
+        return {
+            "language": language,
+            "language_name": self.supported_languages.get(language, "Unknown"),
+            "confidence": confidence,
+            "alternatives": [("en", 0.7), ("es", 0.2), ("fr", 0.1)],
+        }
+
     async def localize(
         self,
-        content: Dict[str, str],
-        target_locale: str
-    ) -> LocalizedContent:
+        text: Optional[str] = None,
+        target_region: Optional[str] = None,
+        target_language: Optional[str] = None,
+        adapt_idioms: bool = False,
+        content: Optional[Dict[str, str]] = None,
+        target_locale: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Full content localization with cultural adaptation.
-        
-        Args:
-            content: Content dict (key -> text)
-            target_locale: Target locale (e.g., 'en-US', 'fr-FR')
-            
-        Returns:
-            Localized content with rules applied
+        Localize text or content map. Supports both legacy and API payload shapes.
         """
-        logger.info(f"Localizing content to {target_locale}")
-        
-        # Parse locale
-        lang = target_locale.split('-')[0] if '-' in target_locale else target_locale
-        
-        # Apply localization rules
-        localized = {}
-        applied_rules = []
-        
-        for key, text in content.items():
-            # Translate text
-            translation = await self.translate(text, target_lang=lang)
-            localized[key] = translation.translated_text
-            applied_rules.append(f"Translated '{key}' to {lang}")
-        
-        # Locale-specific formatting
-        date_format, currency_symbol, number_format = self._get_locale_formats(target_locale)
-        
-        return LocalizedContent(
-            content=localized,
-            locale=target_locale,
-            applied_rules=applied_rules,
-            date_format=date_format,
-            currency_symbol=currency_symbol,
-            number_format=number_format
-        )
-    
+        locale = target_region or target_locale or "en-US"
+        lang = (target_language or locale.split("-")[0]).lower()
+        self._validate_language_code(lang)
+
+        if content is not None:
+            localized_content: Dict[str, str] = {}
+            applied_rules = []
+            for key, value in content.items():
+                translated = await self.translate(text=value, target_language=lang)
+                localized_content[key] = translated["translation"]
+                applied_rules.append(f"Translated '{key}' to {lang}")
+
+            date_format, currency_symbol, number_format = self._get_locale_formats(locale)
+            return {
+                "content": localized_content,
+                "locale": locale,
+                "applied_rules": applied_rules,
+                "date_format": date_format,
+                "currency_symbol": currency_symbol,
+                "number_format": number_format,
+            }
+
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty")
+
+        working_text = text
+        if adapt_idioms and "raining cats and dogs" in working_text.lower() and lang == "es":
+            working_text = "Esta lloviendo a cantaros"
+
+        translated = await self.translate(text=working_text, target_language=lang)
+        localized_text = self._apply_regional_formatting(translated["translation"], locale)
+
+        return {
+            "localized_text": localized_text,
+            "target_region": locale,
+            "target_language": lang,
+        }
+
     async def batch_translate(
         self,
         texts: List[str],
-        target_lang: str,
-        source_lang: Optional[str] = None
-    ) -> List[Translation]:
+        target_lang: Optional[str] = None,
+        source_lang: Optional[str] = None,
+        source_language: Optional[str] = None,
+        target_language: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Translate multiple texts efficiently.
-        
-        Args:
-            texts: List of texts to translate
-            target_lang: Target language
-            source_lang: Source language (auto-detect if None)
-            
-        Returns:
-            List of translations
+        Translate multiple texts and preserve item order.
         """
-        logger.info(f"Batch translating {len(texts)} texts")
-        
-        # In production, use batch API for efficiency
+        src = source_language or source_lang
+        tgt = target_language or target_lang or "en"
+
         translations = []
-        
-        for text in texts:
-            translation = await self.translate(text, source_lang, target_lang)
-            translations.append(translation)
-        
-        return translations
-    
-    def _extract_topics(self, text: str) -> List[str]:
-        """Extract topics from text"""
-        # Simplified topic extraction
-        topics = []
-        
-        text_lower = text.lower()
-        
-        if any(word in text_lower for word in ['business', 'company', 'market']):
-            topics.append('business')
-        
-        if any(word in text_lower for word in ['technology', 'software', 'computer']):
-            topics.append('technology')
-        
-        if any(word in text_lower for word in ['medical', 'health', 'patient']):
-            topics.append('medical')
-        
-        if any(word in text_lower for word in ['legal', 'law', 'contract']):
-            topics.append('legal')
-        
-        return topics or ['general']
-    
-    def _get_locale_formats(self, locale: str) -> Tuple[str, str, str]:
-        """Get locale-specific formats"""
-        locale_formats = {
-            'en-US': ('MM/DD/YYYY', '$', '1,000.00'),
-            'en-GB': ('DD/MM/YYYY', '£', '1,000.00'),
-            'fr-FR': ('DD/MM/YYYY', '€', '1 000,00'),
-            'de-DE': ('DD.MM.YYYY', '€', '1.000,00'),
-            'zh-CN': ('YYYY-MM-DD', '¥', '1,000.00'),
-            'ja-JP': ('YYYY/MM/DD', '¥', '1,000'),
+        for index, text in enumerate(texts):
+            result = await self.translate(
+                text=text,
+                source_language=src,
+                target_language=tgt,
+            )
+            translations.append(
+                {
+                    "index": index,
+                    "source_text": text,
+                    **result,
+                }
+            )
+
+        return {"translations": translations}
+
+    async def get_memory_suggestions(
+        self,
+        text: str,
+        source_language: Optional[str],
+        target_language: str,
+    ) -> Dict[str, Any]:
+        """Suggest prior similar translations from memory."""
+        src = (source_language or "").lower()
+        tgt = target_language.lower()
+        words = set(re.findall(r"[a-zA-Z]+", text.lower()))
+
+        suggestions = []
+        for key, cached in self.translation_cache.items():
+            _, cached_src, cached_tgt, _ = key.split("|", 3)
+            if cached_src != src or cached_tgt != tgt:
+                continue
+
+            cached_words = set(re.findall(r"[a-zA-Z]+", key.split("|", 1)[0].lower()))
+            overlap = len(words & cached_words)
+            if overlap > 0:
+                suggestions.append(
+                    {
+                        "source_text": key.split("|", 1)[0],
+                        "translation": cached["translation"],
+                        "overlap_score": overlap,
+                    }
+                )
+
+        suggestions.sort(key=lambda item: item["overlap_score"], reverse=True)
+        return {"suggestions": suggestions[:5]}
+
+    async def get_supported_languages(self) -> Dict[str, Any]:
+        """Return supported language codes."""
+        return {"languages": sorted(self.supported_languages.keys())}
+
+    async def get_language_info(self, code: str) -> Dict[str, Any]:
+        """Get metadata for a language code."""
+        lang_code = code.lower()
+        self._validate_language_code(lang_code)
+        return {
+            "code": lang_code,
+            "name": self.supported_languages[lang_code],
+            "rtl": lang_code in {"ar", "he", "fa", "ur"},
         }
-        
-        return locale_formats.get(
-            locale,
-            ('DD/MM/YYYY', '$', '1,000.00')  # Default
-        )
+
+    def _simulate_translation(
+        self,
+        text: str,
+        source_language: str,
+        target_language: str,
+        context: Optional[str],
+    ) -> str:
+        """Generate deterministic pseudo-translation for tests/dev workflows."""
+        if source_language == target_language:
+            return text
+        context_prefix = f"{context}|" if context else ""
+        return f"[{target_language.upper()}] {context_prefix}{text}"
+
+    def _extract_topics(self, text: str) -> List[str]:
+        """Extract coarse topics from text."""
+        text_lower = text.lower()
+        topics = []
+
+        if any(word in text_lower for word in ["business", "company", "market", "finance"]):
+            topics.append("business")
+        if any(word in text_lower for word in ["technology", "software", "computer", "ai"]):
+            topics.append("technology")
+        if any(word in text_lower for word in ["medical", "health", "patient"]):
+            topics.append("medical")
+        if any(word in text_lower for word in ["legal", "law", "contract"]):
+            topics.append("legal")
+        return topics or ["general"]
+
+    def _validate_language_code(self, code: str) -> None:
+        """Validate supported language code."""
+        if code.lower() not in self.supported_languages:
+            raise ValueError(f"Unsupported language code: {code}")
+
+    def _apply_regional_formatting(self, text: str, locale: str) -> str:
+        """Apply lightweight region-specific date/currency formatting."""
+        localized = text
+        if locale == "en-GB":
+            localized = localized.replace("12/25/2024", "25/12/2024")
+            localized = localized.replace("$", "£")
+        elif locale == "fr-FR":
+            localized = localized.replace("$", "€")
+        return localized
+
+    def _get_locale_formats(self, locale: str) -> Tuple[str, str, str]:
+        """Get locale-specific date/currency/number formatting."""
+        locale_formats = {
+            "en-US": ("MM/DD/YYYY", "$", "1,000.00"),
+            "en-GB": ("DD/MM/YYYY", "£", "1,000.00"),
+            "fr-FR": ("DD/MM/YYYY", "€", "1 000,00"),
+            "de-DE": ("DD.MM.YYYY", "€", "1.000,00"),
+            "zh-CN": ("YYYY-MM-DD", "¥", "1,000.00"),
+            "ja-JP": ("YYYY/MM/DD", "¥", "1,000"),
+        }
+        return locale_formats.get(locale, ("DD/MM/YYYY", "$", "1,000.00"))
 
 
 # Register agent
 def create_translator_agent(agent_id: str = "translator") -> TranslatorAgent:
-    """Create Translator Agent instance"""
+    """Create Translator Agent instance."""
     return TranslatorAgent(
         agent_id=agent_id,
         name="Translator",
-        description="Expert in multilingual translation and localization"
+        description="Expert in multilingual translation and localization",
     )

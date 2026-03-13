@@ -1,15 +1,22 @@
 """Task API endpoints."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from src.domain.models import Task, TaskPriority, TaskStatus
 from src.infrastructure.repositories import agent_repository, task_repository
 from src.schemas import TaskCreate, TaskResponse, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+class TaskAssignRequest(BaseModel):
+    """Task assignment request body."""
+
+    agent_id: UUID
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
@@ -35,7 +42,9 @@ async def create_task(task_data: TaskCreate) -> TaskResponse:
         )
 
     task = Task(
+        title=task_data.title,
         description=task_data.description,
+        task_type=task_data.task_type,
         priority=priority,
         parent_task_id=task_data.parent_task_id,
         input_data=task_data.input_data,
@@ -48,7 +57,11 @@ async def create_task(task_data: TaskCreate) -> TaskResponse:
 
 
 @router.get("/", response_model=List[TaskResponse])
-async def list_tasks(skip: int = 0, limit: int = 100) -> List[TaskResponse]:
+async def list_tasks(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None,
+) -> List[TaskResponse]:
     """
     List all tasks with pagination.
 
@@ -59,7 +72,10 @@ async def list_tasks(skip: int = 0, limit: int = 100) -> List[TaskResponse]:
     Returns:
         List of tasks
     """
-    tasks = await task_repository.list(skip=skip, limit=limit)
+    if status:
+        tasks = await task_repository.get_by_status(status)
+    else:
+        tasks = await task_repository.list(skip=skip, limit=limit)
     return [TaskResponse.model_validate(task) for task in tasks]
 
 
@@ -147,6 +163,19 @@ async def update_task(task_id: UUID, task_data: TaskUpdate) -> TaskResponse:
     return TaskResponse.model_validate(updated_task)
 
 
+@router.put("/{task_id}", response_model=TaskResponse)
+async def update_task_legacy(task_id: UUID, task_data: dict) -> TaskResponse:
+    """
+    Backward-compatible update endpoint for legacy payloads.
+
+    Supports both modern `output_data` and legacy `result` field names.
+    """
+    if "result" in task_data and "output_data" not in task_data:
+        task_data["output_data"] = task_data.pop("result")
+    normalized = TaskUpdate.model_validate(task_data)
+    return await update_task(task_id, normalized)
+
+
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: UUID) -> None:
     """
@@ -228,3 +257,9 @@ async def assign_task_to_agent(task_id: UUID, agent_id: UUID) -> TaskResponse:
     task.assign_to(agent_id)
     updated_task = await task_repository.update(task)
     return TaskResponse.model_validate(updated_task)
+
+
+@router.post("/{task_id}/assign", response_model=TaskResponse)
+async def assign_task_to_agent_legacy(task_id: UUID, request: TaskAssignRequest) -> TaskResponse:
+    """Backward-compatible assignment endpoint using JSON body."""
+    return await assign_task_to_agent(task_id, request.agent_id)

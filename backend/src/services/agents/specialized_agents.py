@@ -14,9 +14,10 @@ class LogicianAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with logical reasoning."""
+        task_data = task_input if isinstance(task_input, dict) else {"problem": str(task_input)}
         prompt = f"""Analyze this problem systematically:
 
-Problem: {task_input.get('problem', task_input)}
+Problem: {task_data.get('problem', task_input)}
 
 Provide a step-by-step logical analysis."""
 
@@ -40,9 +41,10 @@ class CreativeAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with creative thinking."""
+        task_data = task_input if isinstance(task_input, dict) else {"problem": str(task_input)}
         prompt = f"""Think creatively about this:
 
-Challenge: {task_input.get('problem', task_input)}
+Challenge: {task_data.get('problem', task_input)}
 
 Provide innovative and unconventional approaches."""
 
@@ -66,9 +68,10 @@ class ScholarAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with research-based approach."""
+        task_data = task_input if isinstance(task_input, dict) else {"query": str(task_input)}
         prompt = f"""Provide a well-researched response to:
 
-Query: {task_input.get('query', task_input)}
+Query: {task_data.get('query', task_input)}
 
 Include relevant context and authoritative information."""
 
@@ -92,9 +95,10 @@ class CriticAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with critical evaluation."""
+        task_data = task_input if isinstance(task_input, dict) else {"subject": str(task_input)}
         prompt = f"""Critically evaluate the following:
 
-Subject: {task_input.get('subject', task_input)}
+Subject: {task_data.get('subject', task_input)}
 
 Identify potential flaws, weaknesses, and areas for improvement."""
 
@@ -118,9 +122,10 @@ class CoderAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with coding expertise."""
+        task_data = task_input if isinstance(task_input, dict) else {"task": str(task_input)}
         prompt = f"""Solve this programming problem:
 
-Task: {task_input.get('task', task_input)}
+Task: {task_data.get('task', task_input)}
 
 Provide clean, well-documented code with error handling."""
 
@@ -144,10 +149,11 @@ class ExecutiveAgent(BaseAgent):
 
     async def process(self, task_input: dict) -> dict:
         """Process task with executive decision-making."""
+        task_data = task_input if isinstance(task_input, dict) else {"situation": str(task_input)}
         
         # Check for routing request
-        if task_input.get("routing_request", False):
-            situation = task_input.get('situation', 'No situation provided')
+        if task_data.get("routing_request", False):
+            situation = task_data.get('situation', 'No situation provided')
             prompt = f"""
             You are the Executive Orchestrator. Your job is to route tasks to the most appropriate specialized agent.
             
@@ -195,7 +201,7 @@ class ExecutiveAgent(BaseAgent):
         # Default strategic decision
         prompt = f"""Make a strategic decision on:
 
-Situation: {task_input.get('situation', task_input)}
+Situation: {task_data.get('situation', task_input)}
 
 Consider multiple perspectives and provide a well-reasoned decision."""
 

@@ -18,7 +18,8 @@ class KnowledgeGraphService:
 
     def __init__(self) -> None:
         """Initialize knowledge graph service."""
-        self.client = neo4j_client
+        self.neo4j_client = neo4j_client
+        self.client = self.neo4j_client
 
     async def add_concept(
         self,
@@ -41,7 +42,7 @@ class KnowledgeGraphService:
         props["name"] = concept
         props["type"] = concept_type
         
-        node = await self.client.create_node(
+        node = await self.neo4j_client.create_node(
             label=concept_type,
             properties=props,
         )
@@ -68,7 +69,7 @@ class KnowledgeGraphService:
         Returns:
             Created relationship
         """
-        rel = await self.client.create_relationship(
+        rel = await self.neo4j_client.create_relationship(
             from_node_id=from_concept_id,
             to_node_id=to_concept_id,
             relationship_type=relationship_type,
@@ -95,7 +96,7 @@ class KnowledgeGraphService:
         Returns:
             Matching concepts
         """
-        nodes = await self.client.find_nodes(
+        nodes = await self.neo4j_client.find_nodes(
             label=concept_type,
             properties=filters,
             limit=limit,
@@ -122,7 +123,7 @@ class KnowledgeGraphService:
         Returns:
             Related concepts with relationships
         """
-        neighbors = await self.client.get_neighbors(
+        neighbors = await self.neo4j_client.get_neighbors(
             node_id=concept_id,
             relationship_type=relationship_type,
             direction=direction,
@@ -227,8 +228,54 @@ class KnowledgeGraphService:
         Returns:
             Query results
         """
-        results = await self.client.execute_query(cypher_query, parameters)
+        results = await self.neo4j_client.execute_query(cypher_query, parameters)
         return results
+
+    async def create_concept(
+        self,
+        concept: Optional[str] = None,
+        concept_type: str = "Concept",
+        name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Backward-compatible alias for add_concept used by legacy integration tests.
+        """
+        concept_name = concept or name
+        if not concept_name:
+            raise ValueError("Concept name is required")
+        return await self.add_concept(concept=concept_name, concept_type=concept_type)
+
+    async def create_relationship(
+        self,
+        from_concept: str,
+        to_concept: str,
+        relationship_type: str,
+    ) -> Dict[str, Any]:
+        """
+        Backward-compatible relationship helper that accepts concept names.
+
+        This delegates directly to the graph client; production flows should
+        prefer ID-based add_relationship.
+        """
+        return await self.neo4j_client.create_relationship(
+            from_node_id=from_concept,
+            to_node_id=to_concept,
+            relationship_type=relationship_type,
+            properties=None,
+        )
+
+    async def find_related_concepts(self, concept_name: str, max_depth: int = 2) -> List[Dict[str, Any]]:
+        """
+        Backward-compatible alias used by older tests.
+        """
+        query = (
+            "MATCH (n {name: $name})-[*1..$max_depth]-(m) "
+            "RETURN m LIMIT 25"
+        )
+        return await self.neo4j_client.execute_query(
+            query,
+            {"name": concept_name, "max_depth": max_depth},
+        )
 
 
 # Singleton instance

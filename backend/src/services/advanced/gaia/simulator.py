@@ -3,7 +3,7 @@
 from typing import Any, Callable, Dict, List, Optional
 
 from src.core import get_logger
-from .mcts import mcts
+from .mcts import MCTSNode, mcts
 
 logger = get_logger(__name__)
 
@@ -18,6 +18,7 @@ class GaiaSimulator:
 
     def __init__(
         self,
+        llm_client: Optional[Any] = None,
         exploration_weight: float = 1.414,
         max_iterations: int = 1000,
     ) -> None:
@@ -25,12 +26,42 @@ class GaiaSimulator:
         Initialize Gaia simulator.
         
         Args:
+            llm_client: Optional LLM client (legacy compatibility)
             exploration_weight: MCTS exploration constant
             max_iterations: Maximum MCTS iterations
         """
+        self.llm_client = llm_client
         self.mcts = mcts
         self.mcts.exploration_weight = exploration_weight
         self.mcts.max_iterations = max_iterations
+
+    async def simulate_strategy(
+        self,
+        initial_state: Dict[str, Any],
+        iterations: int = 20,
+    ) -> Dict[str, Any]:
+        """
+        Legacy strategy simulation API expected by older tests.
+        """
+        actions = initial_state.get(
+            "actions",
+            ["analyze", "plan", "execute", "review"],
+        )
+        self.mcts.max_iterations = max(1, int(iterations))
+
+        result = await self.find_optimal_strategy(
+            problem_description="Legacy strategy simulation",
+            initial_state=initial_state,
+            goal_state={"progress": 1.0},
+            available_actions=actions,
+        )
+
+        best_action = result.get("recommended_action")
+        return {
+            "best_path": [best_action] if best_action else [],
+            "score": result.get("expected_reward", 0.0),
+            "strategy": result,
+        }
 
     async def find_optimal_strategy(
         self,
@@ -181,8 +212,10 @@ class GaiaSimulator:
 
     async def simulate_conversation_strategy(
         self,
-        query: str,
-        context: Dict[str, Any],
+        query: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        topic: Optional[str] = None,
+        num_turns: int = 3,
     ) -> Dict[str, Any]:
         """
         Simulate conversation strategies to find best approach.
@@ -194,6 +227,9 @@ class GaiaSimulator:
         Returns:
             Recommended strategy
         """
+        effective_query = topic or query or "general conversation"
+        conversation_context = context or {}
+
         available_actions = [
             "ask_clarifying_question",
             "provide_direct_answer",
@@ -204,22 +240,62 @@ class GaiaSimulator:
         ]
         
         initial_state = {
-            "query": query,
+            "query": effective_query,
             "understanding": 0.5,
             "progress": 0.0,
             "step": 0,
+            "num_turns": num_turns,
+            **conversation_context,
         }
         
         goal_state = {
             "progress": 1.0,
         }
         
-        return await self.find_optimal_strategy(
-            problem_description=f"Respond to: {query}",
+        strategy = await self.find_optimal_strategy(
+            problem_description=f"Respond to: {effective_query}",
             initial_state=initial_state,
             goal_state=goal_state,
             available_actions=available_actions,
         )
+        return {
+            "conversation": [
+                {
+                    "turn": i + 1,
+                    "action": strategy.get("recommended_action"),
+                    "topic": effective_query,
+                }
+                for i in range(max(1, num_turns))
+            ],
+            **strategy,
+        }
+
+    def _select(self, node: MCTSNode) -> MCTSNode:
+        """Legacy wrapper for MCTS selection phase."""
+        if not node.children:
+            return node
+        selected = self.mcts._best_child(node, self.mcts.exploration_weight)
+        return selected or node
+
+    def _expand(self, node: MCTSNode) -> MCTSNode:
+        """Legacy wrapper for MCTS expansion phase."""
+        if not node.untried_actions:
+            node.untried_actions = list(node.state.get("actions", []))
+        if not node.untried_actions:
+            node.untried_actions = ["next_step"]
+        return self.mcts._expand(
+            node,
+            get_actions_fn=lambda state: list(state.get("actions", [])),
+            apply_action_fn=lambda state, action: {
+                **state,
+                "step": state.get("step", 0) + 1,
+                "last_action": action,
+            },
+        )
+
+    def _backpropagate(self, node: MCTSNode, reward: float) -> None:
+        """Legacy wrapper for MCTS backpropagation phase."""
+        self.mcts._backpropagate(node, reward)
 
 
 # Singleton instance

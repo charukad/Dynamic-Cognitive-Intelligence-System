@@ -58,6 +58,13 @@ logger = get_logger(__name__)
 
 T = TypeVar('T')
 
+# Backward-compatible injectable dependencies for legacy tests.
+persona_extractor = None
+style_transfer = None
+personality_model = None
+contradiction_detector = None
+consistency_checker = None
+
 
 # ============================================================================
 # Domain Models (Type-Safe)
@@ -188,6 +195,28 @@ class AIEnhancementStrategy(ABC):
         self._cb_reset_timeout = reset_timeout_seconds
         self._cb_half_open_successes = 0
         self._cb_half_open_max_calls = half_open_max_calls
+
+    # Backward-compatible aliases used by legacy tests.
+    @property
+    def _circuit_breaker_open(self) -> bool:
+        return self._cb_state == CircuitBreakerState.OPEN
+
+    @_circuit_breaker_open.setter
+    def _circuit_breaker_open(self, value: bool) -> None:
+        if value:
+            self._cb_state = CircuitBreakerState.OPEN
+            self._cb_opened_at = time.time()
+        else:
+            self._cb_state = CircuitBreakerState.CLOSED
+            self._cb_opened_at = None
+
+    @property
+    def _circuit_breaker_failures(self) -> int:
+        return self._cb_failures
+
+    @_circuit_breaker_failures.setter
+    def _circuit_breaker_failures(self, value: int) -> None:
+        self._cb_failures = max(0, int(value))
     
     @property
     @abstractmethod
@@ -633,29 +662,25 @@ class AIEnhancementFactory:
     @staticmethod
     def create_personalization_strategy() -> PersonalizationStrategy:
         """Create personalization strategy with dependencies."""
-        from src.services.advanced.mirror import (
-            PersonaExtractor,
-            StyleTransfer,
-            PersonalityModel,
-        )
-        
+        extractor = persona_extractor or PersonaExtractor()
+        transfer = style_transfer or StyleTransfer()
+        model = personality_model or PersonalityModel()
+
         return PersonalizationStrategy(
-            persona_extractor=PersonaExtractor(),
-            style_transfer=StyleTransfer(),
-            personality_model=PersonalityModel(),
+            persona_extractor=extractor,
+            style_transfer=transfer,
+            personality_model=model,
         )
     
     @staticmethod
     def create_validation_strategy() -> ValidationStrategy:
         """Create validation strategy with dependencies."""
-        from src.services.advanced.contrastive import (
-            ContradictionDetector,
-            ConsistencyChecker,
-        )
-        
+        detector = contradiction_detector or ContradictionDetector()
+        checker = consistency_checker or ConsistencyChecker()
+
         return ValidationStrategy(
-            contradiction_detector=ContradictionDetector(),
-            consistency_checker=ConsistencyChecker(),
+            contradiction_detector=detector,
+            consistency_checker=checker,
         )
     
     @staticmethod

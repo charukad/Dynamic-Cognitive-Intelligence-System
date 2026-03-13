@@ -376,7 +376,7 @@ class FeedbackManager:
                 'period_days': days,
                 'total_feedback': 0,
                 'daily_average': 0.0,
-                'trend': 'stable',
+                'trend': 'insufficient_data',
             }
         
         # Group by day
@@ -433,6 +433,9 @@ class FeedbackManager:
                 'total_feedback': 0,
                 'total_agents_with_models': 0,
                 'avg_rating_overall': 0.0,
+                'thumbs_up_count': 0,
+                'thumbs_down_count': 0,
+                'approval_rate': 0.0,
             }
         
         # Overall statistics

@@ -2,9 +2,9 @@
 
 from enum import Enum
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .base import DomainEntity
 
@@ -21,13 +21,15 @@ class MemoryType(str, Enum):
 class Memory(DomainEntity):
     """Memory entity for storing agent memories."""
 
+    # Backward compatibility: allow both UUID and string IDs.
+    id: str | UUID = Field(default_factory=uuid4)
     memory_type: MemoryType = Field(..., description="Type of memory")
     content: str = Field(..., description="Memory content")
     embedding: Optional[list[float]] = Field(None, description="Vector embedding")
     
     # Context
-    agent_id: Optional[UUID] = Field(None, description="Associated agent ID")
-    task_id: Optional[UUID] = Field(None, description="Associated task ID")
+    agent_id: Optional[str | UUID] = Field(None, description="Associated agent ID")
+    task_id: Optional[str | UUID] = Field(None, description="Associated task ID")
     session_id: Optional[str] = Field(None, description="Session identifier")
     
     # Importance and relevance
@@ -38,9 +40,42 @@ class Memory(DomainEntity):
     tags: list[str] = Field(default_factory=list, description="Memory tags")
     metadata: dict = Field(default_factory=dict, description="Additional metadata")
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_fields(cls, values):
+        """Backwards compatibility for `type` and `importance` fields."""
+        if not isinstance(values, dict):
+            return values
+
+        if "memory_type" not in values and "type" in values:
+            values["memory_type"] = values["type"]
+        if "importance_score" not in values and "importance" in values:
+            values["importance_score"] = values["importance"]
+        return values
+
     def __str__(self) -> str:
         """String representation."""
         return f"Memory({self.memory_type.value}, importance={self.importance_score:.2f})"
+
+    @property
+    def type(self) -> MemoryType:
+        """Legacy alias for memory_type."""
+        return self.memory_type
+
+    @type.setter
+    def type(self, value: MemoryType) -> None:
+        """Legacy alias setter for memory_type."""
+        self.memory_type = MemoryType(value)
+
+    @property
+    def importance(self) -> float:
+        """Legacy alias for importance_score."""
+        return self.importance_score
+
+    @importance.setter
+    def importance(self, value: float) -> None:
+        """Legacy alias setter for importance_score."""
+        self.importance_score = max(0.0, min(1.0, value))
 
     def mark_accessed(self) -> None:
         """Increment access count."""

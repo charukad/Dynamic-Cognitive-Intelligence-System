@@ -1,8 +1,9 @@
 """PostgreSQL database client."""
 
-import asyncio
+import re
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import asyncpg
 
@@ -21,7 +22,50 @@ class PostgresClient:
     def __init__(self):
         """Initialize PostgreSQL client."""
         self.pool: Optional[asyncpg.Pool] = None
-        self.database_url = settings.database_url
+        self.database_url = self._normalize_database_url(settings.database_url)
+
+    @staticmethod
+    def _normalize_database_url(database_url: str) -> str:
+        """
+        Normalize DSN for asyncpg compatibility.
+
+        asyncpg expects `postgresql://` or `postgres://` schemes, while some
+        environments provide SQLAlchemy-style URLs like `postgresql+asyncpg://`.
+        """
+        if database_url.startswith("postgresql+asyncpg://"):
+            return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        if database_url.startswith("postgres+asyncpg://"):
+            return database_url.replace("postgres+asyncpg://", "postgres://", 1)
+        return database_url
+
+    async def _ensure_database_exists(self) -> None:
+        """
+        Ensure the target database exists.
+
+        If the configured database is missing, connect to the default `postgres`
+        database and create it once.
+        """
+        parsed = urlsplit(self.database_url)
+        target_db = parsed.path.lstrip("/")
+        if not target_db or target_db == "postgres":
+            return
+
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", target_db):
+            raise ValueError(f"Unsupported database name format: {target_db}")
+
+        admin_url = urlunsplit((parsed.scheme, parsed.netloc, "/postgres", parsed.query, parsed.fragment))
+        conn: asyncpg.Connection | None = None
+        try:
+            conn = await asyncpg.connect(admin_url)
+            exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", target_db)
+            if exists:
+                return
+
+            await conn.execute(f'CREATE DATABASE "{target_db}"')
+            logger.info("Created missing PostgreSQL database: %s", target_db)
+        finally:
+            if conn is not None:
+                await conn.close()
 
     async def connect(self) -> None:
         """Create connection pool."""
@@ -37,7 +81,15 @@ class PostgresClient:
                 command_timeout=60,
             )
             logger.info("PostgreSQL connection pool created")
-            
+        except asyncpg.InvalidCatalogNameError:
+            await self._ensure_database_exists()
+            self.pool = await asyncpg.create_pool(
+                self.database_url,
+                min_size=5,
+                max_size=20,
+                command_timeout=60,
+            )
+            logger.info("PostgreSQL connection pool created after database bootstrap")
         except Exception as e:
             logger.error(f"Failed to connect to PostgreSQL: {e}")
             raise

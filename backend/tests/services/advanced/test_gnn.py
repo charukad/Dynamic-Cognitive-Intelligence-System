@@ -398,7 +398,7 @@ class TestGNNIntegration:
         train_result = await service.train_embeddings(
             model_id='workflow_test',
             triples=triples_dict,
-            embedding_method=Embedding Method.COMPLEX,
+            embedding_method=EmbeddingMethod.COMPLEX,
             config=EmbeddingConfig(embedding_dim=128, num_epochs=25)
         )
         

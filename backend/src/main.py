@@ -7,7 +7,7 @@ Registers all routes including:
 - WebSocket endpoints
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 
@@ -39,6 +39,7 @@ from src.api.websocket.ai_services_ws import (
 )
 from src.infrastructure.metrics.postgres_repository import PostgreSQLMetricsRepository
 from src.infrastructure.metrics.redis_repository import get_cache_repository
+from src.infrastructure.database.postgres_client import postgres_client
 from src.services.metrics.collector import initialize_metrics_collector
 from src.infrastructure.llm.vllm_client import vllm_client
 
@@ -117,7 +118,7 @@ app.include_router(gaia_stats.router, prefix="/api/v1")
 # ============================================================================
 
 @app.websocket("/ws/ai-services")
-async def websocket_endpoint(websocket):
+async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for AI services real-time updates"""
     await ai_services_websocket_endpoint(websocket)
 
@@ -141,6 +142,12 @@ async def startup_event():
         await vllm_client.connect()
     except Exception as e:
         logger.error(f"Failed to connect to LLM: {e}")
+
+    # Ensure primary PostgreSQL schema is present for chat and analytics flows
+    try:
+        await postgres_client.init_schema()
+    except Exception as e:
+        logger.error(f"Failed to initialize PostgreSQL schema: {e}", exc_info=True)
     
     # Initialize Metrics Collector Service
     try:

@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["health"])
     
     # Import and include v1 routers
-    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics, dev_seed, chat_history, chat_sessions, chat_feedback
+    from src.api.routes import advanced, agents, memory, memory_viz, memory_management, query, tasks, mirror, contrastive, causal, gnn, graph, websocket, orchestrator, gaia_evolution, advanced_intelligence, monitoring, mlops, rlhf, analytics, dev_seed, chat_history, chat_sessions, chat_feedback, debate
     app.include_router(agents.router, prefix=settings.api_v1_prefix)
     app.include_router(tasks.router, prefix=settings.api_v1_prefix)
     app.include_router(query.router, prefix=settings.api_v1_prefix)
@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
     from src.api.routes import gaia
     app.include_router(gaia.router, prefix=settings.api_v1_prefix)  # General GAIA stats
     app.include_router(analytics.router, prefix=settings.api_v1_prefix)  # Unified analytics
+    app.include_router(debate.router, prefix=settings.api_v1_prefix)  # Multi-agent debates
     app.include_router(chat_history.router, prefix=settings.api_v1_prefix)
     app.include_router(chat_sessions.router, prefix=settings.api_v1_prefix)
     app.include_router(chat_feedback.router, prefix=settings.api_v1_prefix)
@@ -83,6 +84,14 @@ def create_app() -> FastAPI:
     app.include_router(gnn.router, prefix=settings.api_v1_prefix)  # Graph Neural Networks
     app.include_router(graph.router, prefix=settings.api_v1_prefix) # Graph router
     app.include_router(dev_seed.router, prefix=settings.api_v1_prefix)  # Development seeding
+
+    # Backward-compat aliases for legacy clients/tests that still use /v1/*
+    legacy_v1_prefix = "/v1"
+    app.include_router(agents.router, prefix=legacy_v1_prefix)
+    app.include_router(tasks.router, prefix=legacy_v1_prefix)
+    app.include_router(query.router, prefix=legacy_v1_prefix)
+    app.include_router(memory.router, prefix=legacy_v1_prefix)
+    app.include_router(debate.router, prefix=legacy_v1_prefix)
 
     
     # WebSocket endpoint - native FastAPI WebSocket (not Socket.IO)

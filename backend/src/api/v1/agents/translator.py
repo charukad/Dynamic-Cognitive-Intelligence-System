@@ -77,8 +77,8 @@ async def translate_text(request: TranslateRequest):
             target_lang=request.target_lang,
             context=request.context
         )
-        
-        return translation.dict()
+
+        return translation if isinstance(translation, dict) else translation.dict()
         
     except Exception as e:
         logger.error(f"Translation failed: {e}", exc_info=True)
@@ -106,8 +106,8 @@ async def detect_language(request: DetectLanguageRequest):
         agent = create_translator_agent()
         
         detection = await agent.detect_language(request.text)
-        
-        return detection.dict()
+
+        return detection if isinstance(detection, dict) else detection.dict()
         
     except Exception as e:
         logger.error(f"Language detection failed: {e}", exc_info=True)
@@ -138,8 +138,8 @@ async def localize_content(request: LocalizeRequest):
             content=request.content,
             target_locale=request.target_locale
         )
-        
-        return localized.dict()
+
+        return localized if isinstance(localized, dict) else localized.dict()
         
     except Exception as e:
         logger.error(f"Localization failed: {e}", exc_info=True)
@@ -167,7 +167,9 @@ async def batch_translate(request: BatchTranslateRequest):
             target_lang=request.target_lang,
             source_lang=request.source_lang
         )
-        
+
+        if isinstance(translations, dict):
+            return translations
         return {"translations": [t.dict() for t in translations]}
         
     except Exception as e:

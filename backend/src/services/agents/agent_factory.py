@@ -1,6 +1,6 @@
 """Agent factory for creating specialized agents."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from src.core import get_logger
 from src.domain.models import Agent, AgentType
@@ -35,7 +35,7 @@ class AgentFactory:
     }
 
     @classmethod
-    def create_agent(cls, agent: Agent) -> BaseAgent:
+    def create_agent(cls, agent: Agent, llm_client: Optional[Any] = None) -> BaseAgent:
         """
         Create a specialized agent instance.
         
@@ -48,16 +48,23 @@ class AgentFactory:
         Raises:
             ValueError: If agent type is not supported
         """
-        agent_class = cls._agent_classes.get(agent.agent_type)
-        
+        agent_type = getattr(agent, "agent_type", None)
+        agent_class = cls._agent_classes.get(agent_type)
+
+        # Backward-compatible lookup by raw string type.
         if agent_class is None:
-            raise ValueError(
-                f"Unsupported agent type: {agent.agent_type}. "
-                f"Supported types: {list(cls._agent_classes.keys())}"
+            agent_class = cls._agent_classes.get(str(agent_type))
+
+        if agent_class is None:
+            logger.warning(
+                "Unsupported agent type %s, falling back to BaseAgent",
+                agent_type,
             )
-        
-        logger.info(f"Creating agent: {agent.name} (type={agent.agent_type.value})")
-        return agent_class(agent)
+            return BaseAgent(agent, llm_client=llm_client)
+
+        type_label = getattr(agent_type, "value", agent_type)
+        logger.info("Creating agent: %s (type=%s)", agent.name, type_label)
+        return agent_class(agent, llm_client=llm_client)
 
     @classmethod
     def get_supported_types(cls) -> list[AgentType]:
@@ -70,7 +77,7 @@ class AgentFactory:
         return list(cls._agent_classes.keys())
 
     @classmethod
-    def register_agent_type(cls, agent_type: AgentType, agent_class: type[BaseAgent]) -> None:
+    def register_agent_type(cls, agent_type: AgentType | str, agent_class: type[BaseAgent]) -> None:
         """
         Register a new agent type (for custom agents).
         
@@ -78,8 +85,9 @@ class AgentFactory:
             agent_type: Agent type enum
             agent_class: Agent class implementation
         """
-        cls._agent_classes[agent_type] = agent_class
-        logger.info(f"Registered new agent type: {agent_type.value}")
+        key = agent_type.value if isinstance(agent_type, AgentType) else str(agent_type)
+        cls._agent_classes[key] = agent_class
+        logger.info("Registered new agent type: %s", key)
 
 
 # Singleton instance

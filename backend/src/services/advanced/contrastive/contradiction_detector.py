@@ -89,6 +89,19 @@ class ContradictionDetector:
         s1 = statement1.lower().strip()
         s2 = statement2.lower().strip()
         
+        # Check for logical contradiction
+        logical = self._check_logical_contradiction(s1, s2)
+        if logical['is_contradiction']:
+            return self._format_result(
+                is_contradiction=True,
+                contradiction_type=ContradictionType.LOGICAL,
+                severity=ContradictionSeverity.HIGH,
+                confidence=logical['confidence'],
+                explanation=logical['explanation'],
+                statement1=statement1,
+                statement2=statement2,
+            )
+
         # Check for direct negation
         direct = self._check_direct_negation(s1, s2)
         if direct['is_contradiction']:
@@ -98,6 +111,19 @@ class ContradictionDetector:
                 severity=ContradictionSeverity.HIGH,
                 confidence=direct['confidence'],
                 explanation=direct['explanation'],
+                statement1=statement1,
+                statement2=statement2,
+            )
+
+        # Check for same-subject conflicting values
+        value_conflict = self._check_value_conflict(s1, s2)
+        if value_conflict['is_contradiction']:
+            return self._format_result(
+                is_contradiction=True,
+                contradiction_type=ContradictionType.SEMANTIC,
+                severity=ContradictionSeverity.MEDIUM,
+                confidence=value_conflict['confidence'],
+                explanation=value_conflict['explanation'],
                 statement1=statement1,
                 statement2=statement2,
             )
@@ -111,19 +137,6 @@ class ContradictionDetector:
                 severity=ContradictionSeverity.MEDIUM,
                 confidence=antonym['confidence'],
                 explanation=antonym['explanation'],
-                statement1=statement1,
-                statement2=statement2,
-            )
-        
-        # Check for logical contradiction
-        logical = self._check_logical_contradiction(s1, s2)
-        if logical['is_contradiction']:
-            return self._format_result(
-                is_contradiction=True,
-                contradiction_type=ContradictionType.LOGICAL,
-                severity=ContradictionSeverity.HIGH,
-                confidence=logical['confidence'],
-                explanation=logical['explanation'],
                 statement1=statement1,
                 statement2=statement2,
             )
@@ -198,6 +211,29 @@ class ContradictionDetector:
             }
         
         return {'is_contradiction': False, 'confidence': 0.0, 'explanation': ''}
+
+    def _check_value_conflict(self, s1: str, s2: str) -> Dict[str, Any]:
+        """Check contradictions like 'X is A' vs 'X is B'."""
+        pattern = r'^(?:the\s+)?(?P<subject>[a-z0-9_\-\s]+?)\s+is\s+(?:a\s+|an\s+)?(?P<value>[a-z0-9_\-]+)$'
+
+        m1 = re.match(pattern, s1)
+        m2 = re.match(pattern, s2)
+        if not m1 or not m2:
+            return {'is_contradiction': False, 'confidence': 0.0, 'explanation': ''}
+
+        subject1 = " ".join(m1.group("subject").split())
+        subject2 = " ".join(m2.group("subject").split())
+        value1 = m1.group("value").strip()
+        value2 = m2.group("value").strip()
+
+        if subject1 == subject2 and value1 != value2:
+            return {
+                'is_contradiction': True,
+                'confidence': 0.72,
+                'explanation': f"Conflicting values for same subject '{subject1}'",
+            }
+
+        return {'is_contradiction': False, 'confidence': 0.0, 'explanation': ''}
     
     def _check_antonym_contradiction(self, s1: str, s2: str) -> Dict[str, Any]:
         """Check for antonym-based contradictions"""
@@ -224,7 +260,9 @@ class ContradictionDetector:
             s1_remaining = set(s1_clean.split())
             s2_remaining = set(s2_clean.split())
             
-            if len(s1_remaining & s2_remaining) > 3:
+            # Require meaningful contextual overlap around antonym pair.
+            overlap = len(s1_remaining & s2_remaining)
+            if overlap >= 2:
                 return {
                     'is_contradiction': True,
                     'confidence': 0.75,

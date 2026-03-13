@@ -1,0 +1,3550 @@
+{
+  "config": {
+    "configFile": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/playwright.config.ts",
+    "rootDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/Users/dasuncharuka/Documents/projects/llm/dcis/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.0",
+    "workers": 5,
+    "webServer": {
+      "command": "pnpm exec next dev --webpack --port 3119",
+      "url": "http://localhost:3119",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "accessibility.spec.ts",
+      "file": "accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Accessibility Tests",
+          "file": "accessibility.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "homepage should not have accessibility violations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-4ee476616cbe101db112",
+              "file": "accessibility.spec.ts",
+              "line": 5,
+              "column": 9
+            },
+            {
+              "title": "neural link chat should be accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-ec9752ccb11f9bb304ab",
+              "file": "accessibility.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "keyboard navigation should work",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-6ea93ce980a44e929e22",
+              "file": "accessibility.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "all images should have alt text",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-13a738032a8eac30222d",
+              "file": "accessibility.spec.ts",
+              "line": 47,
+              "column": 9
+            },
+            {
+              "title": "proper heading hierarchy",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-d20393df57c22f723d61",
+              "file": "accessibility.spec.ts",
+              "line": 59,
+              "column": 9
+            },
+            {
+              "title": "color contrast meets WCAG AA standards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-20e559fa148875ea9a72",
+              "file": "accessibility.spec.ts",
+              "line": 81,
+              "column": 9
+            },
+            {
+              "title": "form inputs should have labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-a7a3b9b73770f0e35361",
+              "file": "accessibility.spec.ts",
+              "line": 95,
+              "column": 9
+            },
+            {
+              "title": "landmarks should be properly defined",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-a0416ffc3a55584dc813",
+              "file": "accessibility.spec.ts",
+              "line": 112,
+              "column": 9
+            },
+            {
+              "title": "homepage should not have accessibility violations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-32b7b94d52a3349ff07b",
+              "file": "accessibility.spec.ts",
+              "line": 5,
+              "column": 9
+            },
+            {
+              "title": "neural link chat should be accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-4bf841d4378c9d8f46b7",
+              "file": "accessibility.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "keyboard navigation should work",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-a6b7aa64c97922b9f25d",
+              "file": "accessibility.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "all images should have alt text",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-7a6bb02b549607b67e65",
+              "file": "accessibility.spec.ts",
+              "line": 47,
+              "column": 9
+            },
+            {
+              "title": "proper heading hierarchy",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-a75700a067411a7136ec",
+              "file": "accessibility.spec.ts",
+              "line": 59,
+              "column": 9
+            },
+            {
+              "title": "color contrast meets WCAG AA standards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-77c5e1102341ff805785",
+              "file": "accessibility.spec.ts",
+              "line": 81,
+              "column": 9
+            },
+            {
+              "title": "form inputs should have labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-3948fa64f19c9a5ff2e6",
+              "file": "accessibility.spec.ts",
+              "line": 95,
+              "column": 9
+            },
+            {
+              "title": "landmarks should be properly defined",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-236035cd88b040e7cbb2",
+              "file": "accessibility.spec.ts",
+              "line": 112,
+              "column": 9
+            },
+            {
+              "title": "homepage should not have accessibility violations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-4283208590d557371635",
+              "file": "accessibility.spec.ts",
+              "line": 5,
+              "column": 9
+            },
+            {
+              "title": "neural link chat should be accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-6bceb13ca03d57f1a6a9",
+              "file": "accessibility.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "keyboard navigation should work",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-18aa6690e1a8303a2457",
+              "file": "accessibility.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "all images should have alt text",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-deac38d737a5dee455fd",
+              "file": "accessibility.spec.ts",
+              "line": 47,
+              "column": 9
+            },
+            {
+              "title": "proper heading hierarchy",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-b5e3cc9c088441c294dd",
+              "file": "accessibility.spec.ts",
+              "line": 59,
+              "column": 9
+            },
+            {
+              "title": "color contrast meets WCAG AA standards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-00ce53de4d9474f12286",
+              "file": "accessibility.spec.ts",
+              "line": 81,
+              "column": 9
+            },
+            {
+              "title": "form inputs should have labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-81f3b02a95b8821107fb",
+              "file": "accessibility.spec.ts",
+              "line": 95,
+              "column": 9
+            },
+            {
+              "title": "landmarks should be properly defined",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-7690a41fc43d3900bf81",
+              "file": "accessibility.spec.ts",
+              "line": 112,
+              "column": 9
+            },
+            {
+              "title": "homepage should not have accessibility violations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-04450031b4ac53cf7739",
+              "file": "accessibility.spec.ts",
+              "line": 5,
+              "column": 9
+            },
+            {
+              "title": "neural link chat should be accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-bee82ce58de67694c9c7",
+              "file": "accessibility.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "keyboard navigation should work",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-4ff41ba4962e910a4844",
+              "file": "accessibility.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "all images should have alt text",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-85b0b2810aafaf914102",
+              "file": "accessibility.spec.ts",
+              "line": 47,
+              "column": 9
+            },
+            {
+              "title": "proper heading hierarchy",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-9c71b72eae62ca5cdc79",
+              "file": "accessibility.spec.ts",
+              "line": 59,
+              "column": 9
+            },
+            {
+              "title": "color contrast meets WCAG AA standards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-8286f37593add162f656",
+              "file": "accessibility.spec.ts",
+              "line": 81,
+              "column": 9
+            },
+            {
+              "title": "form inputs should have labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-1cddbf60ded731e1a70c",
+              "file": "accessibility.spec.ts",
+              "line": 95,
+              "column": 9
+            },
+            {
+              "title": "landmarks should be properly defined",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-9664ba650f58d09f26a7",
+              "file": "accessibility.spec.ts",
+              "line": 112,
+              "column": 9
+            },
+            {
+              "title": "homepage should not have accessibility violations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-1efb3e074ba2aefe59a6",
+              "file": "accessibility.spec.ts",
+              "line": 5,
+              "column": 9
+            },
+            {
+              "title": "neural link chat should be accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-4de86435515a178432c8",
+              "file": "accessibility.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "keyboard navigation should work",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-e1f27c62506547b38d47",
+              "file": "accessibility.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "all images should have alt text",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-59a996f24dc6dca7dc2f",
+              "file": "accessibility.spec.ts",
+              "line": 47,
+              "column": 9
+            },
+            {
+              "title": "proper heading hierarchy",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-872ad0c2b4dd3ffe1a60",
+              "file": "accessibility.spec.ts",
+              "line": 59,
+              "column": 9
+            },
+            {
+              "title": "color contrast meets WCAG AA standards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-8710cc2781d7e0f390eb",
+              "file": "accessibility.spec.ts",
+              "line": 81,
+              "column": 9
+            },
+            {
+              "title": "form inputs should have labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-d699c990e9a7b1526dbd",
+              "file": "accessibility.spec.ts",
+              "line": 95,
+              "column": 9
+            },
+            {
+              "title": "landmarks should be properly defined",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "ddd864604af8a6a0198f-08cca819f0e3d397b2f0",
+              "file": "accessibility.spec.ts",
+              "line": 112,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "chat-flow.spec.ts",
+      "file": "chat-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Chat Flow",
+          "file": "chat-flow.spec.ts",
+          "line": 45,
+          "column": 6,
+          "specs": [
+            {
+              "title": "retries a failed HTTP send and eventually delivers the assistant response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-b5392305330582f3feb9",
+              "file": "chat-flow.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "switches sessions and deletes the active session through the canonical API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-ec27570bbfa5b264e111",
+              "file": "chat-flow.spec.ts",
+              "line": 66,
+              "column": 7
+            },
+            {
+              "title": "retries a failed HTTP send and eventually delivers the assistant response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-e10c0ce84b37c8e11933",
+              "file": "chat-flow.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "switches sessions and deletes the active session through the canonical API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-87e048fbf3533df55724",
+              "file": "chat-flow.spec.ts",
+              "line": 66,
+              "column": 7
+            },
+            {
+              "title": "retries a failed HTTP send and eventually delivers the assistant response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-22c2ffc96396494a0d9c",
+              "file": "chat-flow.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "switches sessions and deletes the active session through the canonical API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-f3041b10465c474c00fa",
+              "file": "chat-flow.spec.ts",
+              "line": 66,
+              "column": 7
+            },
+            {
+              "title": "retries a failed HTTP send and eventually delivers the assistant response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-a6c5ff6084ae14f38b72",
+              "file": "chat-flow.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "switches sessions and deletes the active session through the canonical API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-08a4c38c28624eecb7af",
+              "file": "chat-flow.spec.ts",
+              "line": 66,
+              "column": 7
+            },
+            {
+              "title": "retries a failed HTTP send and eventually delivers the assistant response",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-48724b8e90aab06d5e10",
+              "file": "chat-flow.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "switches sessions and deletes the active session through the canonical API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "57d300a4d5b28e5bd677-16ecfc8e928f9484cfc5",
+              "file": "chat-flow.spec.ts",
+              "line": 66,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "chat-interface.spec.ts",
+      "file": "chat-interface.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Chat Interface",
+          "file": "chat-interface.spec.ts",
+          "line": 41,
+          "column": 6,
+          "specs": [
+            {
+              "title": "sends messages, records feedback, and preserves conversation continuity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-0bdb7f9ab4867471fea3",
+              "file": "chat-interface.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "loads the canonical room, dag, and replay views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-a91ee989b59e10d89248",
+              "file": "chat-interface.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "sends messages, records feedback, and preserves conversation continuity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-979b6b32b84555efd65e",
+              "file": "chat-interface.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "loads the canonical room, dag, and replay views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-6fdcd4aa458c369ace3d",
+              "file": "chat-interface.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "sends messages, records feedback, and preserves conversation continuity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-3558e483cea9053e1775",
+              "file": "chat-interface.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "loads the canonical room, dag, and replay views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-ba4c003f2ea9e8db6df7",
+              "file": "chat-interface.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "sends messages, records feedback, and preserves conversation continuity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-03b463114fad46a69091",
+              "file": "chat-interface.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "loads the canonical room, dag, and replay views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-48533ec87485f08ac675",
+              "file": "chat-interface.spec.ts",
+              "line": 76,
+              "column": 7
+            },
+            {
+              "title": "sends messages, records feedback, and preserves conversation continuity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-f472c935a221324a4426",
+              "file": "chat-interface.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "loads the canonical room, dag, and replay views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "07a4acff9be92c99bc68-0723d1fdb02db132c15a",
+              "file": "chat-interface.spec.ts",
+              "line": 76,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "dashboard-navigation.spec.ts",
+      "file": "dashboard-navigation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Dashboard Navigation",
+          "file": "dashboard-navigation.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should display main dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-4666455663a61ca65c10",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Overview tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-b2904a66459863a07331",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 25,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Evolution tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-42a8024d7199880f163f",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Intelligence tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-1cc1d7b265d0c8e895b4",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Operations tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-27211c7f8c53561655f3",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 50,
+              "column": 9
+            },
+            {
+              "title": "should navigate between multiple tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-0d3eedd91ff6373ffc7a",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 57,
+              "column": 9
+            },
+            {
+              "title": "should display main dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-d5db55734f8e9a62b7ae",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Overview tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-b6a830e0d2d915fdcd9b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 25,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Evolution tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-5f3b5cc5de0d459866ff",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Intelligence tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-29a918646bf7a6e68e6c",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Operations tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-697e30b544afa5d53e0f",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 50,
+              "column": 9
+            },
+            {
+              "title": "should navigate between multiple tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-0183e1a67d2c365caaa3",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 57,
+              "column": 9
+            },
+            {
+              "title": "should display main dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-402ba9060b5804b66fb0",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Overview tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-cf43f36a3e24daf03185",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 25,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Evolution tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-8fc97f73b12ad088935b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Intelligence tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-33c267a903edd3e95daf",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Operations tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-4c421887aaa9a19658e4",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 50,
+              "column": 9
+            },
+            {
+              "title": "should navigate between multiple tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-1b0bccf419053c415a00",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 57,
+              "column": 9
+            },
+            {
+              "title": "should display main dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-9030734d28efb820f1e4",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Overview tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-250d8e45e3ded0353277",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 25,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Evolution tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-1d12cb6feabcbbc7710d",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Intelligence tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-12995642538fc0f2d005",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Operations tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-443294935b8094b58982",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 50,
+              "column": 9
+            },
+            {
+              "title": "should navigate between multiple tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-03eeac3bb0f6c4d079a2",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 57,
+              "column": 9
+            },
+            {
+              "title": "should display main dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-247ff1ee181a9f3dfc7d",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 15,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Overview tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-0fc4df706319db3cabae",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 25,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Evolution tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-a00c5c093aeeb6d978a5",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 32,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Intelligence tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-a235239147ab90d387b6",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 39,
+              "column": 9
+            },
+            {
+              "title": "should navigate to Operations tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-6718be8764d0b58642bd",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 50,
+              "column": 9
+            },
+            {
+              "title": "should navigate between multiple tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-a7b687428806a3a2d8d6",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 57,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "Unified Analytics Dashboard",
+          "file": "dashboard-navigation.spec.ts",
+          "line": 73,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should load analytics dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-7862a0dd227bddae906a",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 80,
+              "column": 9
+            },
+            {
+              "title": "should display KPI cards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-f991f659acda01968b56",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "should switch between overview and detailed views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-fd65a48631f3f6d18f34",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 94,
+              "column": 9
+            },
+            {
+              "title": "should display charts and visualizations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-d03b39f7119e8b6bd5b0",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 113,
+              "column": 9
+            },
+            {
+              "title": "should load analytics dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-708ddef29b63f3fa249b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 80,
+              "column": 9
+            },
+            {
+              "title": "should display KPI cards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-474c9c3614cd732a19fe",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "should switch between overview and detailed views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-8b20baef8236205be402",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 94,
+              "column": 9
+            },
+            {
+              "title": "should display charts and visualizations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-8b533c836afc9d7146fa",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 113,
+              "column": 9
+            },
+            {
+              "title": "should load analytics dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-749c85b520b6ccc710b5",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 80,
+              "column": 9
+            },
+            {
+              "title": "should display KPI cards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-466075bc0bca7e31138d",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "should switch between overview and detailed views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-f7b331da7baefe559fb5",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 94,
+              "column": 9
+            },
+            {
+              "title": "should display charts and visualizations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-0681c1445f8d46d347ac",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 113,
+              "column": 9
+            },
+            {
+              "title": "should load analytics dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-ee6dfe462db63716cb0b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 80,
+              "column": 9
+            },
+            {
+              "title": "should display KPI cards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-ded3543eb63567d4798f",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "should switch between overview and detailed views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-915f8d49276035724579",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 94,
+              "column": 9
+            },
+            {
+              "title": "should display charts and visualizations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-85ac2653c29bb7e4a6b7",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 113,
+              "column": 9
+            },
+            {
+              "title": "should load analytics dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-bc9989a71348c5d16937",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 80,
+              "column": 9
+            },
+            {
+              "title": "should display KPI cards",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-3c31b3d8d1bfb099980b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 85,
+              "column": 9
+            },
+            {
+              "title": "should switch between overview and detailed views",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-e5377d6bf0d06047eba3",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 94,
+              "column": 9
+            },
+            {
+              "title": "should display charts and visualizations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-4214a2f26369ef3ed99e",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 113,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "Feedback Analytics",
+          "file": "dashboard-navigation.spec.ts",
+          "line": 126,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should display feedback metrics after submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-500dbffe847877a2be06",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 132,
+              "column": 9
+            },
+            {
+              "title": "should display feedback metrics after submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-b307918f7a6005faf850",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 132,
+              "column": 9
+            },
+            {
+              "title": "should display feedback metrics after submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-bb71cb8efda0ed958d4f",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 132,
+              "column": 9
+            },
+            {
+              "title": "should display feedback metrics after submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-9c438ab2c0570772e77c",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 132,
+              "column": 9
+            },
+            {
+              "title": "should display feedback metrics after submission",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-a1cce35ec4a0d8b6e8f4",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 132,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "Responsive Design",
+          "file": "dashboard-navigation.spec.ts",
+          "line": 158,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should work on mobile viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-b225dad0ae857415c364",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 159,
+              "column": 9
+            },
+            {
+              "title": "should work on tablet viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-471b20e07592679510cc",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 170,
+              "column": 9
+            },
+            {
+              "title": "should work on mobile viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-29a638048136279725eb",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 159,
+              "column": 9
+            },
+            {
+              "title": "should work on tablet viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-0d2e763c913cd2dd7f52",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 170,
+              "column": 9
+            },
+            {
+              "title": "should work on mobile viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-bf7e6ceaeca9613c135b",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 159,
+              "column": 9
+            },
+            {
+              "title": "should work on tablet viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-73059f4cb101edc9a199",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 170,
+              "column": 9
+            },
+            {
+              "title": "should work on mobile viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-b4d887d8949b0d0a60f4",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 159,
+              "column": 9
+            },
+            {
+              "title": "should work on tablet viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-bcad0b4c979bc38d4531",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 170,
+              "column": 9
+            },
+            {
+              "title": "should work on mobile viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-35edd4b19560572b3643",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 159,
+              "column": 9
+            },
+            {
+              "title": "should work on tablet viewport",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "d23bd77383021f8f1c37-f730c7050ad178daf25e",
+              "file": "dashboard-navigation.spec.ts",
+              "line": 170,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "operations-monitoring.spec.ts",
+      "file": "operations-monitoring.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Operations Dashboard",
+          "file": "operations-monitoring.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should load operations dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-d60b9e3073056cddb62c",
+              "file": "operations-monitoring.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "should display latency metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-ff4d0b9a30bce7ba067b",
+              "file": "operations-monitoring.spec.ts",
+              "line": 21,
+              "column": 9
+            },
+            {
+              "title": "should display cache metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-60544a90d964b5a52704",
+              "file": "operations-monitoring.spec.ts",
+              "line": 29,
+              "column": 9
+            },
+            {
+              "title": "should display circuit breaker status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-824b9f4024888924fdf2",
+              "file": "operations-monitoring.spec.ts",
+              "line": 37,
+              "column": 9
+            },
+            {
+              "title": "should update metrics in real-time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-dd23570159cc5d98c269",
+              "file": "operations-monitoring.spec.ts",
+              "line": 45,
+              "column": 9
+            },
+            {
+              "title": "should display charts for monitoring data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-848de10f50c309c9f52b",
+              "file": "operations-monitoring.spec.ts",
+              "line": 61,
+              "column": 9
+            },
+            {
+              "title": "should load operations dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-e68410cf8cd9ab4b55ea",
+              "file": "operations-monitoring.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "should display latency metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-181d147c0e13789da59f",
+              "file": "operations-monitoring.spec.ts",
+              "line": 21,
+              "column": 9
+            },
+            {
+              "title": "should display cache metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-9e9248c04853b2412ad0",
+              "file": "operations-monitoring.spec.ts",
+              "line": 29,
+              "column": 9
+            },
+            {
+              "title": "should display circuit breaker status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-7a739025c951304e6040",
+              "file": "operations-monitoring.spec.ts",
+              "line": 37,
+              "column": 9
+            },
+            {
+              "title": "should update metrics in real-time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-d2d07016102d188e3922",
+              "file": "operations-monitoring.spec.ts",
+              "line": 45,
+              "column": 9
+            },
+            {
+              "title": "should display charts for monitoring data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-7b4d4274c889cdb884b6",
+              "file": "operations-monitoring.spec.ts",
+              "line": 61,
+              "column": 9
+            },
+            {
+              "title": "should load operations dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-836409a494f68758e4b8",
+              "file": "operations-monitoring.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "should display latency metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-8caad80c66c39e4adccc",
+              "file": "operations-monitoring.spec.ts",
+              "line": 21,
+              "column": 9
+            },
+            {
+              "title": "should display cache metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-856b5fd148d255a283fe",
+              "file": "operations-monitoring.spec.ts",
+              "line": 29,
+              "column": 9
+            },
+            {
+              "title": "should display circuit breaker status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-bdbae734f12548a4b65a",
+              "file": "operations-monitoring.spec.ts",
+              "line": 37,
+              "column": 9
+            },
+            {
+              "title": "should update metrics in real-time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-10079d0a609ba1ea8f3f",
+              "file": "operations-monitoring.spec.ts",
+              "line": 45,
+              "column": 9
+            },
+            {
+              "title": "should display charts for monitoring data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-096d0694d40d5191629d",
+              "file": "operations-monitoring.spec.ts",
+              "line": 61,
+              "column": 9
+            },
+            {
+              "title": "should load operations dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-5aa0b64db9d0ad5feb03",
+              "file": "operations-monitoring.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "should display latency metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-dfcbf9f289208c57dac8",
+              "file": "operations-monitoring.spec.ts",
+              "line": 21,
+              "column": 9
+            },
+            {
+              "title": "should display cache metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-a5532b83a056eefd6090",
+              "file": "operations-monitoring.spec.ts",
+              "line": 29,
+              "column": 9
+            },
+            {
+              "title": "should display circuit breaker status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-93e59293f35dadd9965b",
+              "file": "operations-monitoring.spec.ts",
+              "line": 37,
+              "column": 9
+            },
+            {
+              "title": "should update metrics in real-time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-e262fd7aa3b09ebfe075",
+              "file": "operations-monitoring.spec.ts",
+              "line": 45,
+              "column": 9
+            },
+            {
+              "title": "should display charts for monitoring data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-85f0848c83a89276079a",
+              "file": "operations-monitoring.spec.ts",
+              "line": 61,
+              "column": 9
+            },
+            {
+              "title": "should load operations dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-722fe8a7ad57ab2c682c",
+              "file": "operations-monitoring.spec.ts",
+              "line": 16,
+              "column": 9
+            },
+            {
+              "title": "should display latency metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-edcfe456daaa9eb86111",
+              "file": "operations-monitoring.spec.ts",
+              "line": 21,
+              "column": 9
+            },
+            {
+              "title": "should display cache metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-115a96abc28cec1a123d",
+              "file": "operations-monitoring.spec.ts",
+              "line": 29,
+              "column": 9
+            },
+            {
+              "title": "should display circuit breaker status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-f871fe326fc79c356779",
+              "file": "operations-monitoring.spec.ts",
+              "line": 37,
+              "column": 9
+            },
+            {
+              "title": "should update metrics in real-time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-b381cfe90c4f8f46ee16",
+              "file": "operations-monitoring.spec.ts",
+              "line": 45,
+              "column": 9
+            },
+            {
+              "title": "should display charts for monitoring data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-5ca91b4ad32e1bc6cee7",
+              "file": "operations-monitoring.spec.ts",
+              "line": 61,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "System Health Monitoring",
+          "file": "operations-monitoring.spec.ts",
+          "line": 72,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should show system status indicators",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-c3bb87cd44c53c8fb6c3",
+              "file": "operations-monitoring.spec.ts",
+              "line": 78,
+              "column": 9
+            },
+            {
+              "title": "should display performance metrics across tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-fa670d7b61e67aa186d6",
+              "file": "operations-monitoring.spec.ts",
+              "line": 90,
+              "column": 9
+            },
+            {
+              "title": "should show system status indicators",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-ea830706aa7c35ab6d74",
+              "file": "operations-monitoring.spec.ts",
+              "line": 78,
+              "column": 9
+            },
+            {
+              "title": "should display performance metrics across tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-8520e3370d69781d6c66",
+              "file": "operations-monitoring.spec.ts",
+              "line": 90,
+              "column": 9
+            },
+            {
+              "title": "should show system status indicators",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-78168898c1d8f474bb3e",
+              "file": "operations-monitoring.spec.ts",
+              "line": 78,
+              "column": 9
+            },
+            {
+              "title": "should display performance metrics across tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-82946ce0feede317a0cf",
+              "file": "operations-monitoring.spec.ts",
+              "line": 90,
+              "column": 9
+            },
+            {
+              "title": "should show system status indicators",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-7691a9e9602f28cbbf58",
+              "file": "operations-monitoring.spec.ts",
+              "line": 78,
+              "column": 9
+            },
+            {
+              "title": "should display performance metrics across tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Chrome",
+                  "projectName": "Mobile Chrome",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-cedd50004e015c81e997",
+              "file": "operations-monitoring.spec.ts",
+              "line": 90,
+              "column": 9
+            },
+            {
+              "title": "should show system status indicators",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-3e43fb2dd933fee8c778",
+              "file": "operations-monitoring.spec.ts",
+              "line": 78,
+              "column": 9
+            },
+            {
+              "title": "should display performance metrics across tabs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Mobile Safari",
+                  "projectName": "Mobile Safari",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "e5da6d18bda29a45dcfd-decf1c106d8e5214129f",
+              "file": "operations-monitoring.spec.ts",
+              "line": 90,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-10T10:02:19.370Z",
+    "duration": 412.63599999999997,
+    "expected": 0,
+    "skipped": 165,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

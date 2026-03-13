@@ -240,7 +240,7 @@ class TestCounterfactualEngine:
         """Test causal path explanation"""
         engine = CounterfactualEngine()
         
-        result = engine.explain_c ausal_path(simple_graph, 'X', 'Z')
+        result = engine.explain_causal_path(simple_graph, 'X', 'Z')
         
         assert 'has_causal_path' in result
         assert result['has_causal_path'] is True

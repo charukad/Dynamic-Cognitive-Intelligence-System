@@ -17,7 +17,8 @@ class WorkingMemoryService:
 
     def __init__(self) -> None:
         """Initialize working memory service."""
-        self.client = redis_client
+        self.redis_client = redis_client
+        self.client = self.redis_client  # Backward-compatible alias
         self.default_ttl = 3600  # 1 hour
 
     async def store_context(
@@ -42,7 +43,7 @@ class WorkingMemoryService:
         key = f"context:{session_id}"
         value = json.dumps(context)
         
-        success = await self.client.set(
+        success = await self.redis_client.set(
             key=key,
             value=value,
             expire=ttl or self.default_ttl,
@@ -64,7 +65,7 @@ class WorkingMemoryService:
         import json
         
         key = f"context:{session_id}"
-        value = await self.client.get(key)
+        value = await self.redis_client.get(key)
         
         if value:
             try:
@@ -79,7 +80,8 @@ class WorkingMemoryService:
     async def update_context(
         self,
         session_id: str,
-        updates: Dict[str, Any],
+        updates: Optional[Dict[str, Any]] = None,
+        new_data: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Update conversation context.
@@ -87,12 +89,14 @@ class WorkingMemoryService:
         Args:
             session_id: Session identifier
             updates: Context updates to apply
+            new_data: Backward-compatible alias for updates
             
         Returns:
             True if updated successfully
         """
         context = await self.get_context(session_id) or {}
-        context.update(updates)
+        payload = updates or new_data or {}
+        context.update(payload)
         
         return await self.store_context(session_id, context)
 
@@ -107,7 +111,7 @@ class WorkingMemoryService:
             True if cleared
         """
         key = f"context:{session_id}"
-        success = await self.client.delete(key)
+        success = await self.redis_client.delete(key)
         
         logger.info(f"Cleared context for session: {session_id}")
         return success
@@ -141,7 +145,7 @@ class WorkingMemoryService:
         else:
             serialized = str(value)
         
-        success = await self.client.set(
+        success = await self.redis_client.set(
             key=full_key,
             value=serialized,
             expire=ttl or self.default_ttl,
@@ -168,7 +172,7 @@ class WorkingMemoryService:
         import json
         
         full_key = f"{namespace}:{key}"
-        value = await self.client.get(full_key)
+        value = await self.redis_client.get(full_key)
         
         if value:
             # Try to deserialize JSON
@@ -195,7 +199,7 @@ class WorkingMemoryService:
             True if invalidated
         """
         full_key = f"{namespace}:{key}"
-        success = await self.client.delete(full_key)
+        success = await self.redis_client.delete(full_key)
         
         logger.debug(f"Invalidated cache: {full_key}")
         return success

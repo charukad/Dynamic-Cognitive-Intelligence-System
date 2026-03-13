@@ -170,7 +170,7 @@ class LinkPredictor:
             ))
         
         # Sort by score descending and take top-K
-        candidates.sort(reverse=True)
+        candidates.sort(key=lambda pred: pred.score, reverse=True)
         top_candidates = candidates[:top_k]
         
         # Assign ranks
@@ -217,7 +217,7 @@ class LinkPredictor:
                 score=score
             ))
         
-        candidates.sort(reverse=True)
+        candidates.sort(key=lambda pred: pred.score, reverse=True)
         top_candidates = candidates[:top_k]
         
         for rank, pred in enumerate(top_candidates, start=1):

@@ -50,7 +50,7 @@ export default defineConfig({
     webServer: {
         command: 'pnpm exec next dev --webpack --port 3119',
         url: 'http://localhost:3119',
-        reuseExistingServer: false,
+        reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
     },
 });

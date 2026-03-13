@@ -88,7 +88,7 @@ class AgentRepository(BaseRepository[Agent]):
     
     # ✅ Agent-specific methods
     
-    async def get_by_type(self, agent_type: AgentType) -> List[Agent]:
+    async def get_by_type(self, agent_type: AgentType | str) -> List[Agent]:
         """
         Get all agents of a specific type.
         
@@ -98,7 +98,8 @@ class AgentRepository(BaseRepository[Agent]):
         Returns:
             List of agents
         """
-        return await self.list(filters={"type": agent_type.value})
+        resolved_type = agent_type.value if isinstance(agent_type, AgentType) else str(agent_type)
+        return await self.list(filters={"type": resolved_type})
     
     async def get_available_agents(self) -> List[Agent]:
         """

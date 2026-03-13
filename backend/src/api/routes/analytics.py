@@ -167,6 +167,7 @@ async def get_top_performers() -> Dict[str, Any]:
         
         return {
             'top_agents': top_agents,
+            'top_rated_agents': top_agents,  # Backward-compatible alias
             'ranking_criteria': ['message_count'],
         }
     except Exception as e:

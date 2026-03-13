@@ -2,11 +2,20 @@
 """Test script to verify LM Studio integration."""
 
 import asyncio
+import os
 import sys
 
 import httpx
+import pytest
 
 
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_LM_STUDIO_TEST") != "1",
+    reason="Manual LM Studio integration check. Set RUN_LM_STUDIO_TEST=1 to run.",
+)
+
+
+@pytest.mark.asyncio
 async def test_lm_studio_connection():
     """Test connection to LM Studio server."""
     print("=" * 60)

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # Agent Schemas
@@ -12,12 +12,44 @@ class AgentCreate(BaseModel):
     """Schema for creating an agent."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Agent name")
-    agent_type: str = Field(..., description="Agent type")
+    agent_type: Optional[str] = Field(None, description="Agent type")
+    type: Optional[str] = Field(None, description="Legacy alias for agent_type")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="LLM temperature")
-    system_prompt: str = Field(..., min_length=1, description="System prompt")
+    system_prompt: Optional[str] = Field(None, min_length=1, description="System prompt")
     model_name: str = Field(default="default", description="LLM model")
+    config: dict = Field(default_factory=dict, description="Legacy config envelope")
     capabilities: list[str] = Field(default_factory=list, description="Agent capabilities")  # ✅ NEW
     metadata: dict = Field(default_factory=dict, description="Additional metadata")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_agent_fields(cls, values: dict) -> dict:
+        """Accept legacy payloads that use `type` and `config` fields."""
+        if not isinstance(values, dict):
+            return values
+
+        if not values.get("agent_type") and values.get("type"):
+            values["agent_type"] = values["type"]
+
+        config = values.get("config")
+        if isinstance(config, dict):
+            if "temperature" in config and "temperature" not in values:
+                values["temperature"] = config["temperature"]
+            if "model_name" in config and "model_name" not in values:
+                values["model_name"] = config["model_name"]
+            if "system_prompt" in config and not values.get("system_prompt"):
+                values["system_prompt"] = config["system_prompt"]
+
+        return values
+
+    @model_validator(mode="after")
+    def ensure_required_agent_fields(self) -> "AgentCreate":
+        """Ensure compatibility defaults for required fields."""
+        if not self.agent_type:
+            raise ValueError("agent_type or type is required")
+        if not self.system_prompt:
+            self.system_prompt = f"You are {self.name}, a {self.agent_type} specialist agent."
+        return self
 
 
 class AgentUpdate(BaseModel):
@@ -59,12 +91,37 @@ class AgentResponse(BaseModel):
 class TaskCreate(BaseModel):
     """Schema for creating a task."""
 
-    description: str = Field(..., min_length=1, description="Task description")
-    priority: str = Field(default="medium", description="Task priority")
+    title: Optional[str] = Field(None, min_length=1, description="Optional task title")
+    description: Optional[str] = Field(None, min_length=1, description="Task description")
+    task_type: Optional[str] = Field(None, description="Optional task type")
+    priority: str | int = Field(default="medium", description="Task priority")
     parent_task_id: Optional[UUID] = Field(None, description="Parent task ID")
     input_data: dict = Field(default_factory=dict, description="Input data")
     context: dict = Field(default_factory=dict, description="Context")
     metadata: dict = Field(default_factory=dict, description="Metadata")
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def normalize_priority(cls, value: str | int) -> str:
+        """Accept both string and numeric priorities from legacy clients."""
+        if isinstance(value, int):
+            if value >= 8:
+                return "critical"
+            if value >= 6:
+                return "high"
+            if value >= 3:
+                return "medium"
+            return "low"
+        return str(value).lower()
+
+    @model_validator(mode="after")
+    def ensure_description(self) -> "TaskCreate":
+        """Ensure at least one textual descriptor is available."""
+        if not self.description and self.title:
+            self.description = self.title
+        if not self.description:
+            raise ValueError("description or title is required")
+        return self
 
 
 class TaskUpdate(BaseModel):
@@ -83,7 +140,9 @@ class TaskResponse(BaseModel):
     """Schema for task response."""
 
     id: UUID
+    title: Optional[str]
     description: str
+    task_type: Optional[str]
     status: str
     priority: str
     assigned_agent_id: Optional[UUID]

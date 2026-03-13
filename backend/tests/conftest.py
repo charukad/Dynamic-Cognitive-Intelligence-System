@@ -1,15 +1,36 @@
 """Test configuration and fixtures."""
 
+import inspect
 import pytest
+import httpx
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
 
+import src.infrastructure.repositories as repository_registry
+from src.api.routes import agents as agents_routes
+from src.api.routes import tasks as tasks_routes
 from src.domain.models import Agent, AgentType, Memory, MemoryType, Task
-from src.infrastructure.repositories import (
-    agent_repository,
-    memory_repository,
-    task_repository,
+from src.infrastructure.repositories.memory import (
+    agent_repository as in_memory_agent_repository,
+    memory_repository as in_memory_memory_repository,
+    task_repository as in_memory_task_repository,
 )
+from src.services.orchestrator.meta_orchestrator import meta_orchestrator
+
+
+if "app" not in inspect.signature(httpx.AsyncClient.__init__).parameters:
+    _OriginalAsyncClient = httpx.AsyncClient
+
+    class _CompatAsyncClient(_OriginalAsyncClient):
+        """Back-compat wrapper for test suites still using AsyncClient(app=...)."""
+
+        def __init__(self, *args, app=None, **kwargs):
+            if app is not None and "transport" not in kwargs:
+                kwargs["transport"] = httpx.ASGITransport(app=app)
+            kwargs.setdefault("follow_redirects", True)
+            super().__init__(*args, **kwargs)
+
+    httpx.AsyncClient = _CompatAsyncClient
 
 
 @pytest.fixture
@@ -88,12 +109,21 @@ def mock_redis_client() -> AsyncMock:
 @pytest.fixture(autouse=True)
 def clear_repositories():
     """Clear in-memory repositories before each test."""
-    if hasattr(agent_repository, "_storage"):
-        agent_repository._storage.clear()
-    if hasattr(task_repository, "_storage"):
-        task_repository._storage.clear()
-    if hasattr(memory_repository, "_storage"):
-        memory_repository._storage.clear()
+    # Force in-memory repositories for integration tests to avoid DB auth dependencies.
+    repository_registry.agent_repository = in_memory_agent_repository
+    repository_registry.task_repository = in_memory_task_repository
+    repository_registry.memory_repository = in_memory_memory_repository
+    agents_routes.agent_repository = in_memory_agent_repository
+    tasks_routes.agent_repository = in_memory_agent_repository
+    tasks_routes.task_repository = in_memory_task_repository
+    meta_orchestrator.agent_repo = in_memory_agent_repository
+    meta_orchestrator.task_repo = in_memory_task_repository
+    meta_orchestrator.router.performance.clear()
+    meta_orchestrator.router.type_to_agents.clear()
+
+    in_memory_agent_repository.agents.clear()
+    in_memory_task_repository.tasks.clear()
+    in_memory_memory_repository.memories.clear()
     
     # Reset RLHF feedback manager
     try:
@@ -115,12 +145,9 @@ def clear_repositories():
     
     yield
     
-    if hasattr(agent_repository, "_storage"):
-        agent_repository._storage.clear()
-    if hasattr(task_repository, "_storage"):
-        task_repository._storage.clear()
-    if hasattr(memory_repository, "_storage"):
-        memory_repository._storage.clear()
+    in_memory_agent_repository.agents.clear()
+    in_memory_task_repository.tasks.clear()
+    in_memory_memory_repository.memories.clear()
 
 
 @pytest.fixture
@@ -133,6 +160,31 @@ def multiple_agents() -> list[Agent]:
             system_prompt=f"Agent {i} prompt",
         )
         for i in range(5)
+    ]
+
+
+@pytest.fixture
+def sample_agents() -> list[Agent]:
+    """Create a representative set of agents used by legacy integration tests."""
+    return [
+        Agent(
+            name="LogicAgent",
+            agent_type=AgentType.LOGICIAN,
+            system_prompt="You reason through structured problems.",
+            capabilities=["analysis"],
+        ),
+        Agent(
+            name="CodeAgent",
+            agent_type=AgentType.CODER,
+            system_prompt="You implement robust production code.",
+            capabilities=["coding"],
+        ),
+        Agent(
+            name="CriticAgent",
+            agent_type=AgentType.CRITIC,
+            system_prompt="You review and improve outputs.",
+            capabilities=["review"],
+        ),
     ]
 
 
@@ -177,3 +229,20 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "asyncio: mark test as async"
     )
+    config.addinivalue_line(
+        "markers", "benchmark: mark test as benchmark/performance"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Skip performance benchmark tests when pytest-benchmark plugin is unavailable.
+    """
+    if config.pluginmanager.hasplugin("benchmark"):
+        return
+
+    skip_perf = pytest.mark.skip(reason="pytest-benchmark plugin not installed")
+    for item in items:
+        path = str(item.fspath)
+        if "/tests/performance/" in path:
+            item.add_marker(skip_perf)

@@ -12,9 +12,9 @@ Architecture:
 """
 
 from .gnn_service import GNNService, EmbeddingQuality
-from .node_embedder import NodeEmbedder, EmbeddingMethod
-from .graph_convolution import GraphConvolution, ConvolutionType
-from . link_predictor import LinkPredictor, ScoringFunction
+from .node_embedder import EmbeddingConfig, EmbeddingMethod, NodeEmbedder, Triple
+from .graph_convolution import ConvolutionType, GraphConvolution, GraphStructure
+from .link_predictor import LinkPredictor, ScoringFunction
 
 
 # Placeholder Stub for MultiHopReasoner (not yet fully implemented)
@@ -45,9 +45,12 @@ __all__ = [
     "GNNService",
     "EmbeddingQuality",
     "NodeEmbedder",
+    "Triple",
     "EmbeddingMethod",
+    "EmbeddingConfig",
     "GraphConvolution",
     "ConvolutionType",
+    "GraphStructure",
     "LinkPredictor",
     "ScoringFunction",
     "MultiHopReasoner",

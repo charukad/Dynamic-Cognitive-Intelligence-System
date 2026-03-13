@@ -1,6 +1,6 @@
 """Gaia package."""
 
-from .mcts import mcts
-from .simulator import gaia_simulator
+from .mcts import MCTSNode, mcts
+from .simulator import GaiaSimulator, gaia_simulator
 
-__all__ = ["mcts", "gaia_simulator"]
+__all__ = ["MCTSNode", "GaiaSimulator", "mcts", "gaia_simulator"]

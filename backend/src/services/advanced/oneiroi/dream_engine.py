@@ -99,6 +99,82 @@ class DreamCycleEngine:
     def __init__(self):
         self.active_cycles: Dict[UUID, DreamCycleResult] = {}
         self.completed_cycles: List[DreamCycleResult] = []
+
+    async def rem_phase(self, agent_id: str, num_experiences: int = 100) -> Dict[str, Any]:
+        """
+        Backward-compatible REM entrypoint used by legacy manager/tests.
+        """
+        experiences = [
+            {
+                "id": f"exp_{i}",
+                "reward": 0.5,
+                "context": {"agent_id": agent_id},
+            }
+            for i in range(max(0, num_experiences))
+        ]
+        rem_insights = await self._rem_phase(agent_id=agent_id, experiences=experiences)
+        return {
+            "cycle_id": str(uuid4()),
+            "replayed_experiences": experiences,
+            "insights": [insight.model_dump() for insight in rem_insights],
+        }
+
+    async def nrem_phase(self, experiences: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Backward-compatible NREM entrypoint used by legacy manager/tests.
+        """
+        nrem_insights = await self._nrem_phase(
+            agent_id="unknown",
+            experiences=experiences,
+            rem_insights=[],
+        )
+        patterns = await self._mine_frequent_patterns(experiences) if experiences else []
+        return {
+            "patterns": patterns,
+            "insights": [insight.model_dump() for insight in nrem_insights],
+        }
+
+    async def integration_phase(
+        self,
+        agent_id: str,
+        patterns: List[Dict[str, Any]],
+        insights: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Backward-compatible integration entrypoint used by legacy manager/tests.
+        """
+        parsed_insights: List[Insight] = []
+        for raw in insights:
+            try:
+                parsed_insights.append(
+                    raw if isinstance(raw, Insight) else Insight.model_validate(raw)
+                )
+            except Exception:
+                continue
+
+        improvement_score = await self._integration_phase(
+            agent_id=agent_id,
+            insights=parsed_insights,
+        )
+        return {
+            "patterns_processed": len(patterns),
+            "applied_insights": [insight.model_dump() for insight in parsed_insights],
+            "improvement_score": improvement_score,
+        }
+
+    async def get_insights(self, agent_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Backward-compatible insight retrieval used by manager/tests.
+        """
+        insights: List[Insight] = []
+        for cycle in reversed(self.completed_cycles):
+            if cycle.agent_id != agent_id:
+                continue
+            insights.extend(cycle.insights_extracted)
+            if len(insights) >= limit:
+                break
+
+        return [insight.model_dump() for insight in insights[:limit]]
         
     async def initiate_dream_cycle(
         self,

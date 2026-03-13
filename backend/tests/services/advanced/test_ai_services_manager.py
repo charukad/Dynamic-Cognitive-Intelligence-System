@@ -9,6 +9,7 @@ Tests the orchestration layer integrating:
 """
 
 import pytest
+import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch
 import asyncio
 
@@ -23,7 +24,7 @@ from src.services.advanced.ai_services_manager import (
 # Fixtures
 # ============================================================================
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def manager():
     """Create AI Services Manager instance"""
     return AdvancedAIServicesManager()

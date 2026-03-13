@@ -9,9 +9,9 @@ Run with:
 
 import pytest
 from unittest.mock import Mock, AsyncMock
-from backend.src.services.orchestrator.meta_orchestrator import MetaOrchestrator
-from backend.src.services.orchestrator.htn_planner import HTNPlanner
-from backend.src.services.orchestrator.thompson_router import ThompsonSamplingRouter
+from src.services.orchestrator.meta_orchestrator import MetaOrchestrator
+from src.services.orchestrator.htn_planner import HTNPlanner
+from src.services.orchestrator.thompson_router import ThompsonSamplingRouter
 
 
 class TestCriticalPathBenchmarks:

@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from .base import DomainEntity
 
@@ -44,7 +44,10 @@ class Agent(DomainEntity):
     name: str = Field(..., description="Agent name")
     agent_type: AgentType = Field(..., description="Type of agent")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="LLM temperature")
-    system_prompt: str = Field(..., description="Agent's system prompt")
+    system_prompt: str = Field(
+        default="You are a helpful AI assistant.",
+        description="Agent's system prompt",
+    )
     model_name: str = Field(default="default", description="LLM model to use")
     status: AgentStatus = Field(default=AgentStatus.IDLE, description="Current status")
     
@@ -61,6 +64,14 @@ class Agent(DomainEntity):
     
     # Metadata
     metadata: dict = Field(default_factory=dict, description="Additional metadata")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_type_alias(cls, values):
+        """Backwards compatibility: allow legacy `type` field."""
+        if isinstance(values, dict) and "agent_type" not in values and "type" in values:
+            values["agent_type"] = values["type"]
+        return values
     
     @field_validator('capabilities')
     @classmethod
@@ -89,6 +100,16 @@ class Agent(DomainEntity):
     def __str__(self) -> str:
         """String representation."""
         return f"Agent({self.name}, type={self.agent_type.value}, status={self.status.value})"
+
+    @property
+    def type(self) -> AgentType:
+        """Legacy alias for agent_type."""
+        return self.agent_type
+
+    @type.setter
+    def type(self, value: AgentType) -> None:
+        """Legacy alias setter for agent_type."""
+        self.agent_type = AgentType(value)
 
     def mark_busy(self) -> None:
         """Mark agent as busy."""

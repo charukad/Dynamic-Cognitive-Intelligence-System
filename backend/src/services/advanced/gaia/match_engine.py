@@ -179,6 +179,87 @@ class GAIAMatchEngine:
         self.completed_matches: List[GAIAMatch] = []
         self.elo_calculator = ELORatingCalculator(k_factor=32.0)
         self.agent_ratings: Dict[str, float] = {}  # agent_id -> ELO
+
+    async def run_match(
+        self,
+        player1_id: str,
+        opponent_type: str = "synthetic",
+        num_rounds: int = 5,
+    ) -> Dict[str, Any]:
+        """
+        Backward-compatible high-level match API expected by service manager/tests.
+        """
+        initial_elo = self.agent_ratings.get(player1_id, 1500.0)
+        try:
+            resolved_type = OpponentType(opponent_type)
+        except ValueError:
+            resolved_type = OpponentType.SYNTHETIC
+
+        match_id = await self.create_match(
+            agent_id=player1_id,
+            opponent_type=resolved_type,
+            config=MatchConfig(rounds=num_rounds),
+        )
+
+        # Wait for asynchronous match completion.
+        while match_id in self.active_matches:
+            await asyncio.sleep(0.05)
+
+        match = self.get_match_status(match_id)
+        if match is None or match.result is None:
+            return {
+                "match_id": str(match_id),
+                "winner": None,
+                "score": {"player1": 0, "player2": 0},
+                "elo_before": initial_elo,
+                "elo_after": initial_elo,
+                "elo_change": 0.0,
+            }
+
+        final_elo = self.agent_ratings.get(player1_id, initial_elo)
+        return {
+            "match_id": str(match.id),
+            "winner": match.result.winner_id,
+            "score": {
+                "player1": match.result.player1_score,
+                "player2": match.result.player2_score,
+            },
+            "elo_before": initial_elo,
+            "elo_after": final_elo,
+            "elo_change": final_elo - initial_elo,
+        }
+
+    async def get_elo(self, agent_id: str) -> float:
+        """
+        Backward-compatible ELO accessor.
+        """
+        return self.agent_ratings.get(agent_id, 1500.0)
+
+    async def get_history(self, agent_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Backward-compatible match history accessor.
+        """
+        history: List[Dict[str, Any]] = []
+        for match in reversed(self.completed_matches):
+            if match.agent_id != agent_id:
+                continue
+            history.append(
+                {
+                    "match_id": str(match.id),
+                    "status": match.status.value,
+                    "agent_score": match.agent_score,
+                    "opponent_score": match.opponent_score,
+                    "winner": match.result.winner_id if match.result else None,
+                    "timestamp": (
+                        match.end_time.isoformat()
+                        if match.end_time is not None
+                        else None
+                    ),
+                }
+            )
+            if len(history) >= limit:
+                break
+        return history
     
     async def create_match(
         self,

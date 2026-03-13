@@ -8,7 +8,7 @@ from src.domain.interfaces.repository import (
     MemoryRepository,
     TaskRepository,
 )
-from src.domain.models import Agent, Memory, Task
+from src.domain.models import Agent, AgentStatus, AgentType, Memory, MemoryType, Task, TaskStatus
 
 
 class InMemoryAgentRepository(AgentRepository):
@@ -17,6 +17,11 @@ class InMemoryAgentRepository(AgentRepository):
     def __init__(self) -> None:
         """Initialize repository."""
         self._agents: dict[UUID, Agent] = {}
+
+    @property
+    def agents(self) -> dict[UUID, Agent]:
+        """Legacy compatibility accessor used by older tests."""
+        return self._agents
 
     async def create(self, entity: Agent) -> Agent:
         """Create a new agent."""
@@ -52,6 +57,16 @@ class InMemoryAgentRepository(AgentRepository):
         """Get all available (idle) agents."""
         return [a for a in self._agents.values() if a.status.value == "idle"]
 
+    async def find_by_type(self, agent_type: AgentType | str) -> List[Agent]:
+        """Backward-compatible alias for get_by_type."""
+        resolved = agent_type.value if isinstance(agent_type, AgentType) else str(agent_type)
+        return await self.get_by_type(resolved)
+
+    async def find_by_status(self, status: AgentStatus | str) -> List[Agent]:
+        """Backward-compatible status filter used by legacy unit tests."""
+        resolved = status.value if isinstance(status, AgentStatus) else str(status)
+        return [a for a in self._agents.values() if a.status.value == resolved]
+
 
 class InMemoryTaskRepository(TaskRepository):
     """In-memory implementation of TaskRepository."""
@@ -59,6 +74,11 @@ class InMemoryTaskRepository(TaskRepository):
     def __init__(self) -> None:
         """Initialize repository."""
         self._tasks: dict[UUID, Task] = {}
+
+    @property
+    def tasks(self) -> dict[UUID, Task]:
+        """Legacy compatibility accessor used by older tests."""
+        return self._tasks
 
     async def create(self, entity: Task) -> Task:
         """Create a new task."""
@@ -94,6 +114,19 @@ class InMemoryTaskRepository(TaskRepository):
         """Get tasks assigned to an agent."""
         return [t for t in self._tasks.values() if t.assigned_agent_id == agent_id]
 
+    async def find_by_status(self, status: TaskStatus | str) -> List[Task]:
+        """Backward-compatible alias for get_by_status."""
+        resolved = status.value if isinstance(status, TaskStatus) else str(status)
+        return await self.get_by_status(resolved)
+
+    async def find_by_agent(self, agent_id: UUID) -> List[Task]:
+        """Backward-compatible alias for get_by_agent."""
+        return await self.get_by_agent(agent_id)
+
+    async def find_by_parent(self, parent_task_id: UUID) -> List[Task]:
+        """Find child tasks for a parent task ID."""
+        return [t for t in self._tasks.values() if t.parent_task_id == parent_task_id]
+
 
 class InMemoryMemoryRepository(MemoryRepository):
     """In-memory implementation of MemoryRepository."""
@@ -101,6 +134,11 @@ class InMemoryMemoryRepository(MemoryRepository):
     def __init__(self) -> None:
         """Initialize repository."""
         self._memories: dict[UUID, Memory] = {}
+
+    @property
+    def memories(self) -> dict[UUID, Memory]:
+        """Legacy compatibility accessor used by older tests."""
+        return self._memories
 
     async def create(self, entity: Memory) -> Memory:
         """Create a new memory."""
@@ -164,6 +202,23 @@ class InMemoryMemoryRepository(MemoryRepository):
         # Sort by timestamp descending
         sorted_sessions = sorted(sessions.items(), key=lambda x: x[1], reverse=True)
         return [s[0] for s in sorted_sessions[:limit]]
+
+    async def find_by_session(self, session_id: str) -> List[Memory]:
+        """Backward-compatible alias for get_by_session."""
+        return await self.get_by_session(session_id)
+
+    async def find_by_type(self, memory_type: MemoryType | str) -> List[Memory]:
+        """Backward-compatible alias for get_by_type."""
+        resolved = memory_type.value if isinstance(memory_type, MemoryType) else str(memory_type)
+        return await self.get_by_type(resolved)
+
+    async def search(self, query: str, limit: int = 10) -> List[Memory]:
+        """Simple in-memory substring search over memory content."""
+        lowered = query.lower().strip()
+        if not lowered:
+            return []
+        matches = [m for m in self._memories.values() if lowered in m.content.lower()]
+        return matches[:limit]
 
 
 # Global instances

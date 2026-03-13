@@ -9,11 +9,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import colorsys
+from uuid import uuid4
 
 from pydantic import BaseModel
 
 from src.services.agents.base_agent import BaseAgent
 from src.core import get_logger
+from src.domain.models.agent import Agent, AgentStatus, AgentType
 
 logger = get_logger(__name__)
 
@@ -115,9 +117,43 @@ class DesignerAgent(BaseAgent):
     - Brand identity creation
     """
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        agent_id: str = "designer",
+        name: str = "Designer Agent",
+        description: str = "Expert in visual design, color systems, and layout composition",
+    ):
+        agent = Agent(
+            id=agent_id,
+            name=name,
+            agent_type=AgentType.DESIGNER,
+            status=AgentStatus.IDLE,
+            capabilities=["design", "ui_ux", "branding", "color_theory"],
+            system_prompt=self.get_system_prompt(),
+            metadata={"description": description},
+        )
+        super().__init__(agent=agent)
         self.specialty = "design"
+
+    async def process(self, task_input: dict) -> dict:
+        """Process a generic design task."""
+        action = task_input.get("action", "design")
+        if action == "palette":
+            return await self.generate_color_palette(
+                base_color=task_input.get("base_color", "#667eea"),
+                harmony=task_input.get("harmony", "complementary"),
+            )
+        if action == "layout":
+            return await self.optimize_layout(
+                width=task_input.get("width", 1200),
+                height=task_input.get("height", 800),
+                algorithm=task_input.get("algorithm", "golden_ratio"),
+            )
+        return await self.generate_design(
+            prompt=task_input.get("prompt", "modern landing page"),
+            style=task_input.get("style", "modern"),
+            design_type=task_input.get("design_type", "ui"),
+        )
     
     def get_system_prompt(self) -> str:
         """Get specialized system prompt"""
@@ -149,10 +185,11 @@ Always provide:
     async def generate_design(
         self,
         prompt: str,
-        style: DesignStyle = DesignStyle.MODERN,
+        style: DesignStyle | str = DesignStyle.MODERN,
         width: int = 1024,
-        height: int = 1024
-    ) -> DesignOutput:
+        height: int = 1024,
+        design_type: str = "ui",
+    ) -> Dict[str, Any]:
         """
         Generate design using AI.
         
@@ -180,7 +217,15 @@ Always provide:
         # # Save to storage
         # image_url = await storage.upload_image(image)
         
-        logger.info(f"Generating {style.value} design: {prompt}")
+        if isinstance(style, str):
+            try:
+                resolved_style = DesignStyle(style)
+            except ValueError:
+                resolved_style = DesignStyle.MODERN
+        else:
+            resolved_style = style
+
+        logger.info(f"Generating {resolved_style.value} design: {prompt}")
         
         # Simulated output
         image_url = f"https://placeholder.com/{width}x{height}/design.png"
@@ -188,17 +233,23 @@ Always provide:
         # Extract design tokens
         design_tokens = {
             'dominant_colors': ['#667eea', '#764ba2', '#f093fb'],
-            'style_keywords': [style.value, 'modern', 'clean'],
+            'style_keywords': [resolved_style.value, 'modern', 'clean'],
             'composition': 'rule_of_thirds'
         }
         
-        return DesignOutput(
-            image_url=image_url,
-            style=style.value,
-            prompt=prompt,
-            dimensions=(width, height),
-            design_tokens=design_tokens
-        )
+        return {
+            "design_id": str(uuid4()),
+            "image_url": image_url,
+            "style": style if isinstance(style, str) else resolved_style.value,
+            "design_type": design_type,
+            "description": f"{resolved_style.value.title()} {design_type} design for: {prompt}",
+            "elements": [
+                {"type": "header", "x": 0, "y": 0, "width": width, "height": int(height * 0.15)},
+                {"type": "content", "x": 0, "y": int(height * 0.15), "width": width, "height": int(height * 0.7)},
+                {"type": "footer", "x": 0, "y": int(height * 0.85), "width": width, "height": int(height * 0.15)},
+            ],
+            "tokens": design_tokens,
+        }
     
     async def suggest_color_palette(
         self,
@@ -261,6 +312,46 @@ Always provide:
             scheme_type=scheme_type,
             css_variables=css_variables
         )
+
+    async def generate_color_palette(
+        self,
+        base_color: str,
+        harmony: str = "complementary",
+    ) -> Dict[str, Any]:
+        """
+        Backward-compatible palette API expected by designer unit tests.
+        """
+        if not isinstance(base_color, str) or not base_color.startswith("#") or len(base_color) != 7:
+            raise ValueError("base_color must be a hex color like #667eea")
+
+        try:
+            scheme = ColorSchemeType(harmony)
+        except ValueError:
+            raise ValueError(f"Unsupported harmony: {harmony}")
+
+        palette = await self.suggest_color_palette(
+            base_color=base_color,
+            scheme_type=scheme,
+        )
+
+        if harmony == "monochromatic":
+            colors = [
+                palette.primary.hex,
+                palette.secondary.hex,
+                palette.accent.hex,
+                palette.background.hex,
+                palette.text.hex,
+            ]
+        elif harmony == "triadic":
+            colors = [palette.primary.hex, palette.secondary.hex, palette.accent.hex]
+        else:
+            colors = [palette.primary.hex, palette.secondary.hex, palette.accent.hex]
+
+        return {
+            "colors": colors,
+            "harmony_type": harmony,
+            "css_variables": palette.css_variables,
+        }
     
     def _generate_color_scheme(
         self,
@@ -324,10 +415,14 @@ Always provide:
     
     async def optimize_layout(
         self,
-        components: List[LayoutComponent],
+        components: Optional[List[LayoutComponent]] = None,
         container_width: int = 1200,
-        use_golden_ratio: bool = True
-    ) -> Layout:
+        use_golden_ratio: bool = True,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        algorithm: str = "golden_ratio",
+        columns: int = 12,
+    ) -> Any:
         """
         Optimize component layout using design principles.
         
@@ -339,38 +434,62 @@ Always provide:
         Returns:
             Optimized layout
         """
+        # Legacy unit-test mode: optimize based on width/height/algorithm only.
+        if components is None:
+            if width is None or height is None:
+                raise ValueError("width and height are required when components are not provided")
+            if width <= 0 or height <= 0:
+                raise ValueError("width and height must be positive")
+
+            if algorithm == "grid":
+                section_width = width / columns
+                sections = [
+                    {"x": i * section_width, "y": 0, "width": section_width, "height": height}
+                    for i in range(columns)
+                ]
+                return {
+                    "algorithm": "grid",
+                    "sections": sections,
+                    "grid": {"columns": columns, "rows": 1},
+                }
+
+            phi = 1.618
+            left_width = width / phi
+            right_width = width - left_width
+            sections = [
+                {"x": 0, "y": 0, "width": left_width, "height": height},
+                {"x": left_width, "y": 0, "width": right_width, "height": height / phi},
+                {"x": left_width, "y": height / phi, "width": right_width, "height": height - (height / phi)},
+            ]
+            return {
+                "algorithm": "golden_ratio",
+                "sections": sections,
+            }
+
         logger.info(f"Optimizing layout for {len(components)} components")
-        
         golden_ratio = 1.618 if use_golden_ratio else 1.5
-        
-        # Sort by priority (high to low)
-        sorted_components = sorted(
-            components,
-            key=lambda c: c.priority,
-            reverse=True
-        )
-        
-        # Calculate grid
-        grid_columns = 12  # 12-column grid
+
+        sorted_components = sorted(components, key=lambda c: c.priority, reverse=True)
+        grid_columns = 12
         layout_items = []
-        
-        for idx, component in enumerate(sorted_components):
-            # Calculate column span based on priority and golden ratio
+
+        for component in sorted_components:
             if component.priority >= 3:
-                col_span = grid_columns  # Full width
+                col_span = grid_columns
             elif component.priority == 2:
-                col_span = int(grid_columns / golden_ratio)  # ~7 columns
+                col_span = int(grid_columns / golden_ratio)
             else:
-                col_span = int(grid_columns / (golden_ratio ** 2))  # ~4 columns
-            
-            layout_items.append({
-                'id': component.id,
-                'grid_column': f'span {col_span}',
-                'aspect_ratio': f'{component.width} / {component.height}',
-                'priority': component.priority
-            })
-        
-        # CSS Grid template
+                col_span = int(grid_columns / (golden_ratio ** 2))
+
+            layout_items.append(
+                {
+                    "id": component.id,
+                    "grid_column": f"span {col_span}",
+                    "aspect_ratio": f"{component.width} / {component.height}",
+                    "priority": component.priority,
+                }
+            )
+
         css_grid = f"""
 .container {{
   display: grid;
@@ -383,7 +502,7 @@ Always provide:
   grid-column: var(--grid-column);
 }}
 """
-        
+
         explanation = f"""
 Layout optimized using:
 - 12-column grid system
@@ -392,18 +511,18 @@ Layout optimized using:
 - Responsive gap spacing (2rem)
 - Maximum container width: {container_width}px
 """
-        
+
         return Layout(
             components=layout_items,
             css_grid=css_grid.strip(),
-            explanation=explanation.strip()
+            explanation=explanation.strip(),
         )
     
     async def critique_design(
         self,
-        design_description: str,
+        design_description: Any,
         design_url: Optional[str] = None
-    ) -> DesignCritique:
+    ) -> Any:
         """
         Provide design critique and feedback.
         
@@ -414,13 +533,41 @@ Layout optimized using:
         Returns:
             Design critique
         """
+        if isinstance(design_description, dict):
+            if not design_description:
+                raise ValueError("design payload cannot be empty")
+
+            background = design_description.get("background", "#ffffff")
+            text = design_description.get("text", "#000000")
+            contrast_score = self._estimate_contrast_score(background, text)
+
+            elements = design_description.get("elements", [])
+            if len(elements) >= 2:
+                left = sum(e.get("x", 0) for e in elements[: len(elements) // 2])
+                right = sum(e.get("x", 0) for e in elements[len(elements) // 2 :])
+                balance_score = 10.0 - min(10.0, abs(left - right) / 100.0)
+            else:
+                balance_score = 7.5
+
+            suggestions: List[str] = []
+            if contrast_score < 7.0:
+                suggestions.append("Increase contrast between background and text for readability.")
+            if balance_score < 6.0:
+                suggestions.append("Rebalance element distribution across the canvas.")
+            if not suggestions:
+                suggestions.append("Design is strong; consider micro-typography refinements.")
+
+            return {
+                "contrast_score": contrast_score,
+                "balance_score": balance_score,
+                "suggestions": suggestions,
+            }
+
         # In production, use vision model to analyze design_url
         # and LLM to generate detailed critique
-        
         logger.info("Analyzing design for critique")
-        
-        # Simulated critique based on description analysis
-        desc_lower = design_description.lower()
+
+        desc_lower = str(design_description).lower()
         
         strengths = []
         weaknesses = []
@@ -456,6 +603,26 @@ Layout optimized using:
             suggestions=suggestions,
             accessibility_score=accessibility_score
         )
+
+    def _estimate_contrast_score(self, background_hex: str, text_hex: str) -> float:
+        """Approximate contrast score on 0-10 scale for compatibility checks."""
+        try:
+            bg = self._hex_to_rgb(background_hex)
+            fg = self._hex_to_rgb(text_hex)
+        except Exception:
+            return 5.0
+
+        def rel_luminance(rgb: Tuple[int, int, int]) -> float:
+            channels = []
+            for channel in rgb:
+                c = channel / 255.0
+                channels.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+            return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+        l1 = rel_luminance(bg)
+        l2 = rel_luminance(fg)
+        ratio = (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
+        return min(10.0, round((ratio / 21.0) * 10.0, 2))
     
     # Helper methods for color manipulation
     

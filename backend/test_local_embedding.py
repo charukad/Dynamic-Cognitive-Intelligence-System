@@ -1,7 +1,18 @@
 
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_LOCAL_EMBEDDING_TEST") != "1",
+    reason="Manual local embedding check. Set RUN_LOCAL_EMBEDDING_TEST=1 to run.",
+)
+
+
+@pytest.mark.asyncio
 async def test_local_embedding():
     print("Testing local embedding with transformers...")
     try:

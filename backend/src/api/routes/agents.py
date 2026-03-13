@@ -1,6 +1,6 @@
 """Agent API endpoints."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -133,7 +133,11 @@ async def create_agent(agent_data: AgentCreate) -> AgentResponse:
 
 
 @router.get("/", response_model=List[AgentResponse])
-async def list_agents(skip: int = 0, limit: int = 100) -> List[AgentResponse]:
+async def list_agents(
+    skip: int = 0,
+    limit: int = 100,
+    agent_type: Optional[str] = None,
+) -> List[AgentResponse]:
     """
     List all agents with pagination.
 
@@ -144,7 +148,17 @@ async def list_agents(skip: int = 0, limit: int = 100) -> List[AgentResponse]:
     Returns:
         List of agents
     """
-    agents = await agent_repository.list(skip=skip, limit=limit)
+    if agent_type:
+        try:
+            resolved_type = AgentType(agent_type)
+            agents = await agent_repository.get_by_type(resolved_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid agent_type. Must be one of: {[t.value for t in AgentType]}",
+            )
+    else:
+        agents = await agent_repository.list(skip=skip, limit=limit)
     return [AgentResponse.model_validate(agent) for agent in agents]
 
 
@@ -215,6 +229,12 @@ async def update_agent(agent_id: UUID, agent_data: AgentUpdate) -> AgentResponse
 
     updated_agent = await agent_repository.update(agent)
     return AgentResponse.model_validate(updated_agent)
+
+
+@router.put("/{agent_id}", response_model=AgentResponse)
+async def update_agent_legacy(agent_id: UUID, agent_data: AgentUpdate) -> AgentResponse:
+    """Backward-compatible alias for clients still using PUT."""
+    return await update_agent(agent_id, agent_data)
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)

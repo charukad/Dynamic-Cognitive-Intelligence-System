@@ -135,10 +135,10 @@ class ChatRateLimiter:
                 $3,
                 $4,
                 1,
-                $5,
-                $6,
+                $5::integer,
+                $6::integer,
                 NOW(),
-                NOW() + ($6 * INTERVAL '1 second'),
+                NOW() + ($6::integer * INTERVAL '1 second'),
                 NOW()
             )
             ON CONFLICT (bucket_key)

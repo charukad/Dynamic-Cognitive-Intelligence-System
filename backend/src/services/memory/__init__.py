@@ -33,6 +33,7 @@ _pipeline = EmbeddingPipeline(
     chunk_overlap=50,
 )
 set_embedding_pipeline(_pipeline)
+embedding_pipeline = _pipeline
 
 # Initialize memory services
 episodic_memory_service = EpisodicMemoryService()

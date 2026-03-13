@@ -1,10 +1,13 @@
 """Memory API endpoints for search and storage."""
 
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
+from src.core import get_logger
+from src.infrastructure.repositories import memory_repository
 from src.services.memory import (
     episodic_memory_service,
     knowledge_graph_service,
@@ -13,6 +16,7 @@ from src.services.memory import (
 )
 
 router = APIRouter(prefix="/memory", tags=["memory"])
+logger = get_logger(__name__)
 
 
 # Request/Response Models
@@ -29,9 +33,19 @@ class MemoryStoreRequest(BaseModel):
     """Memory storage request."""
     
     content: str = Field(..., min_length=1, description="Memory content")
-    memory_type: str = Field(default="episodic", description="Memory type (episodic, semantic)")
+    memory_type: str = Field(
+        default="episodic",
+        validation_alias=AliasChoices("memory_type", "type"),
+        description="Memory type (episodic, semantic)",
+    )
     session_id: Optional[str] = Field(None, description="Session ID for episodic memories")
-    importance_score: float = Field(default=0.5, ge=0.0, le=1.0, description="Importance score")
+    importance_score: float = Field(
+        default=0.5,
+        validation_alias=AliasChoices("importance_score", "importance"),
+        ge=0.0,
+        le=1.0,
+        description="Importance score",
+    )
     tags: List[str] = Field(default_factory=list, description="Memory tags")
 
 
@@ -168,6 +182,12 @@ async def store_memory(request: MemoryStoreRequest) -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Memory storage failed: {str(e)}",
         )
+
+
+@router.post("/")
+async def store_memory_legacy(request: MemoryStoreRequest) -> dict:
+    """Backward-compatible alias for clients posting directly to /memory."""
+    return await store_memory(request)
 
 
 @router.post("/knowledge/search")
@@ -372,3 +392,37 @@ async def get_memory_stats() -> Dict[str, Any]:
             detail=f"Failed to get memory stats: {str(e)}",
         )
 
+
+@router.get("/{memory_id}")
+async def get_memory(memory_id: str) -> Dict[str, Any]:
+    """
+    Retrieve a single memory by ID.
+    """
+    try:
+        memory_uuid = UUID(memory_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid memory ID format",
+        )
+
+    memory = await memory_repository.get_by_id(memory_uuid)
+    if memory is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Memory {memory_id} not found",
+        )
+
+    return {
+        "id": str(memory.id),
+        "memory_type": memory.memory_type.value,
+        "content": memory.content,
+        "agent_id": str(memory.agent_id) if memory.agent_id else None,
+        "task_id": str(memory.task_id) if memory.task_id else None,
+        "session_id": memory.session_id,
+        "importance_score": memory.importance_score,
+        "tags": memory.tags,
+        "metadata": memory.metadata,
+        "created_at": memory.created_at.isoformat(),
+        "updated_at": memory.updated_at.isoformat(),
+    }

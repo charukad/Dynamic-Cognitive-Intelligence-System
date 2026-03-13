@@ -22,15 +22,36 @@ class MCTSNode:
     untried_actions: List[Any] = field(default_factory=list)
     action: Any = None  # Action that led to this node
     
-    @property
     def is_fully_expanded(self) -> bool:
         """Check if all actions have been tried."""
-        return len(self.untried_actions) == 0
+        return len(self.untried_actions) == 0 and len(self.children) > 0
     
     @property
     def is_terminal(self) -> bool:
         """Check if this is a terminal state."""
         return len(self.untried_actions) == 0 and len(self.children) == 0
+
+    @property
+    def value(self) -> float:
+        """Backward-compatible alias for reward."""
+        return self.reward
+
+    @value.setter
+    def value(self, new_value: float) -> None:
+        """Backward-compatible alias setter for reward."""
+        self.reward = float(new_value)
+
+    def ucb1_score(self, exploration_weight: float = 1.414) -> float:
+        """Compute UCB1 score for this node."""
+        if self.parent is None:
+            return float("inf")
+        if self.visits == 0:
+            return float("inf")
+        exploitation = self.reward / self.visits
+        exploration = exploration_weight * math.sqrt(
+            math.log(max(self.parent.visits, 1)) / self.visits
+        )
+        return exploitation + exploration
 
 
 class MCTS:
@@ -148,7 +169,7 @@ class MCTS:
             return node
         
         # Expand if not fully expanded
-        if not node.is_fully_expanded:
+        if not node.is_fully_expanded():
             return self._expand(node, get_actions_fn, apply_action_fn)
         
         # Otherwise, select best child using UCB1
@@ -182,6 +203,9 @@ class MCTS:
         Returns:
             New child node
         """
+        if not node.untried_actions:
+            return node
+
         # Select random untried action
         action = random.choice(node.untried_actions)
         node.untried_actions.remove(action)

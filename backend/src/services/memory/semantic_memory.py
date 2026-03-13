@@ -24,6 +24,10 @@ class SemanticMemoryService:
     def __init__(self) -> None:
         """Initialize semantic memory service."""
         self.collection_name = "semantic_memories"
+        self.chroma_client = chroma_client
+        self.llm_client = vllm_client
+        self.memory_repo = memory_repository
+        self.repository = self.memory_repo  # Legacy alias expected by tests
 
     async def store_knowledge(
         self,
@@ -44,7 +48,7 @@ class SemanticMemoryService:
         """
         # Generate embedding
         try:
-            embedding = await vllm_client.get_embedding(content)
+            embedding = await self.llm_client.get_embedding(content)
         except Exception as e:
             logger.warning(f"Failed to generate embedding: {e}")
             embedding = None
@@ -59,12 +63,12 @@ class SemanticMemoryService:
         )
 
         # Store in repository
-        stored_memory = await memory_repository.create(memory)
+        stored_memory = await self.memory_repo.create(memory)
         
         # Store in ChromaDB
         if embedding:
             try:
-                await chroma_client.add_documents(
+                await self.chroma_client.add_documents(
                     collection_name=self.collection_name,
                     documents=[content],
                     embeddings=[embedding],
@@ -146,15 +150,22 @@ class SemanticMemoryService:
         """
         try:
             # Generate query embedding
-            query_embedding = await vllm_client.get_embedding(query)
+            query_embedding = await self.llm_client.get_embedding(query)
             
             # Search in ChromaDB (get more results for re-ranking)
             search_limit = limit * 3 if use_forgetting_curve else limit
-            results = await chroma_client.query(
-                collection_name=self.collection_name,
-                query_embeddings=[query_embedding],
-                n_results=search_limit,
-            )
+            if hasattr(self.chroma_client, "query_documents"):
+                results = await self.chroma_client.query_documents(
+                    collection_name=self.collection_name,
+                    query_embeddings=[query_embedding],
+                    n_results=search_limit,
+                )
+            else:
+                results = await self.chroma_client.query(
+                    collection_name=self.collection_name,
+                    query_embeddings=[query_embedding],
+                    n_results=search_limit,
+                )
             
             # Retrieve full memory objects
             if results.get("ids"):
@@ -163,7 +174,7 @@ class SemanticMemoryService:
                 
                 memories_with_scores = []
                 for idx, memory_id in enumerate(memory_ids):
-                    memory = await memory_repository.get_by_id(memory_id)
+                    memory = await self.memory_repo.get_by_id(memory_id)
                     if memory:
                         # Filter by tags if specified
                         if tags and not any(tag in memory.tags for tag in tags):
@@ -190,7 +201,7 @@ class SemanticMemoryService:
                 # Mark as accessed and update
                 for memory in top_memories:
                     memory.mark_accessed()
-                    await memory_repository.update(memory)
+                    await self.memory_repo.update(memory)
                 
                 return top_memories
             
@@ -209,7 +220,7 @@ class SemanticMemoryService:
         Returns:
             List of semantic memories
         """
-        all_memories = await memory_repository.get_by_type(MemoryType.SEMANTIC.value)
+        all_memories = await self.memory_repo.get_by_type(MemoryType.SEMANTIC.value)
         
         if tags:
             return [m for m in all_memories if any(tag in m.tags for tag in tags)]
@@ -230,6 +241,23 @@ class SemanticMemoryService:
             "total_count": total_count,
             "avg_importance": sum(m.importance_score for m in memories) / total_count if total_count > 0 else 0.0,
         }
+
+    async def search_knowledge(
+        self,
+        query: str,
+        limit: int = 5,
+        tags: Optional[List[str]] = None,
+    ) -> List[Memory]:
+        """
+        Backward-compatible alias for retrieve_knowledge used by legacy tests.
+        """
+        return await self.retrieve_knowledge(query=query, limit=limit, tags=tags)
+
+    async def retrieve_by_tags(self, tags: List[str]) -> List[Memory]:
+        """
+        Backward-compatible helper expected by legacy unit tests.
+        """
+        return await self.get_all_knowledge(tags=tags)
 
 
 

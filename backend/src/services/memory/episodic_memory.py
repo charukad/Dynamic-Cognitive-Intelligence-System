@@ -22,6 +22,10 @@ class EpisodicMemoryService:
     def __init__(self) -> None:
         """Initialize episodic memory service."""
         self.collection_name = "episodic_memories"
+        self.chroma_client = chroma_client
+        self.llm_client = vllm_client
+        self.memory_repo = memory_repository
+        self.repository = self.memory_repo  # Legacy alias expected by unit tests
 
     async def store_memory(
         self,
@@ -48,7 +52,7 @@ class EpisodicMemoryService:
         """
         # Generate embedding
         try:
-            embedding = await vllm_client.get_embedding(content)
+            embedding = await self.llm_client.get_embedding(content)
         except Exception as e:
             logger.warning(f"Failed to generate embedding: {e}. Using None.")
             embedding = None
@@ -66,12 +70,12 @@ class EpisodicMemoryService:
         )
 
         # Store in repository
-        stored_memory = await memory_repository.create(memory)
+        stored_memory = await self.memory_repo.create(memory)
         
         # Store in ChromaDB for semantic search (if embedding available)
         if embedding:
             try:
-                await chroma_client.add_documents(
+                await self.chroma_client.add_documents(
                     collection_name=self.collection_name,
                     documents=[content],
                     embeddings=[embedding],
@@ -108,24 +112,31 @@ class EpisodicMemoryService:
         """
         try:
             # Generate query embedding
-            query_embedding = await vllm_client.get_embedding(query)
+            query_embedding = await self.llm_client.get_embedding(query)
             
-            # Search in ChromaDB
-            results = await chroma_client.query(
-                collection_name=self.collection_name,
-                query_embeddings=[query_embedding],
-                n_results=limit,
-            )
+            # Search in ChromaDB (supports both current and legacy client method names)
+            if hasattr(self.chroma_client, "query_documents"):
+                results = await self.chroma_client.query_documents(
+                    collection_name=self.collection_name,
+                    query_embeddings=[query_embedding],
+                    n_results=limit,
+                )
+            else:
+                results = await self.chroma_client.query(
+                    collection_name=self.collection_name,
+                    query_embeddings=[query_embedding],
+                    n_results=limit,
+                )
             
             # Retrieve full memory objects from repository
             if results.get("ids"):
                 memory_ids = [UUID(id) for id in results["ids"][0]]
                 memories = []
                 for memory_id in memory_ids:
-                    memory = await memory_repository.get_by_id(memory_id)
+                    memory = await self.memory_repo.get_by_id(memory_id)
                     if memory and memory.importance_score >= min_importance:
                         memory.mark_accessed()
-                        await memory_repository.update(memory)
+                        await self.memory_repo.update(memory)
                         memories.append(memory)
                 return memories
             
@@ -144,7 +155,7 @@ class EpisodicMemoryService:
         Returns:
             List of session memories
         """
-        return await memory_repository.get_by_session(session_id)
+        return await self.memory_repo.get_by_session(session_id)
 
     async def get_recent_sessions(self, limit: int = 10) -> List[str]:
         """
@@ -156,7 +167,7 @@ class EpisodicMemoryService:
         Returns:
             List of session IDs
         """
-        return await memory_repository.get_recent_sessions(limit)
+        return await self.memory_repo.get_recent_sessions(limit)
 
     async def prune_memories(
         self,
@@ -177,7 +188,7 @@ class EpisodicMemoryService:
         """
         # Get all episodic memories for agent
         # Note: In production, use a more efficient query with ordering
-        all_memories = await memory_repository.get_by_agent(agent_id)
+        all_memories = await self.memory_repo.get_by_agent(agent_id)
         episodic_memories = [
             m for m in all_memories 
             if m.memory_type == MemoryType.EPISODIC
@@ -200,12 +211,12 @@ class EpisodicMemoryService:
             if not force_prune and memory.importance_score > 0.8:
                 continue
                 
-            await memory_repository.delete(memory.id)
+            await self.memory_repo.delete(memory.id)
             
             # Also remove from ChromaDB if it has an embedding
             if memory.embedding:
                 try:
-                    await chroma_client.delete_document(
+                    await self.chroma_client.delete_document(
                         collection_name=self.collection_name,
                         document_id=str(memory.id)
                     )
@@ -224,7 +235,7 @@ class EpisodicMemoryService:
         Returns:
             Dictionary containing memory stats
         """
-        memories = await memory_repository.get_by_type(MemoryType.EPISODIC.value)
+        memories = await self.memory_repo.get_by_type(MemoryType.EPISODIC.value)
         total_count = len(memories)
         
         return {
@@ -232,6 +243,62 @@ class EpisodicMemoryService:
             "recent_count": 0, # Placeholder until we have filtering
             "avg_importance": sum(m.importance_score for m in memories) / total_count if total_count > 0 else 0.0,
         }
+
+    async def search_memories(
+        self,
+        query: str,
+        session_id: Optional[str] = None,
+        limit: int = 10,
+        min_importance: float = 0.0,
+    ) -> List[Memory]:
+        """
+        Backward-compatible alias for retrieve_memories used by legacy tests.
+        """
+        memories = await self.retrieve_memories(
+            query=query,
+            limit=limit,
+            min_importance=min_importance,
+        )
+        if session_id:
+            return [memory for memory in memories if memory.session_id == session_id]
+        return memories
+
+    async def get_recent_memories(
+        self,
+        session_id: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Memory]:
+        """
+        Backward-compatible helper expected by legacy unit tests.
+        """
+        if session_id:
+            memories = await self.memory_repo.get_by_session(session_id)
+        else:
+            memories = await self.memory_repo.list(limit=limit)
+        memories = sorted(memories, key=lambda m: m.created_at, reverse=True)
+        return memories[:limit]
+
+    async def store(
+        self,
+        content: str,
+        importance: float = 0.5,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Backward-compatible shorthand expected by legacy service tests.
+        """
+        memory = await self.store_memory(
+            content=content,
+            importance_score=importance,
+            tags=(metadata or {}).get("tags", []),
+        )
+        return str(memory.id)
+
+    async def get_recent(self, limit: int = 10) -> List[Memory]:
+        """
+        Backward-compatible shorthand expected by legacy service tests.
+        """
+        return await self.get_recent_memories(limit=limit)
 
 
 

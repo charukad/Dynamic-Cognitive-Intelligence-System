@@ -35,8 +35,10 @@ class InputValidator:
     # Dangerous patterns
     SQL_INJECTION_PATTERNS = [
         r"';?\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE)\s",
+        r"\bDROP\s+TABLE\b",
         r"UNION\s+SELECT",
         r"OR\s+1\s*=\s*1",
+        r"\bOR\b\s+['\"]?\w+['\"]?\s*=\s*['\"]?\w+['\"]?",
         r"--",
         r"/\*.*\*/",
     ]
@@ -46,6 +48,16 @@ class InputValidator:
         r"javascript:",
         r"on\w+\s*=",
         r"<iframe",
+    ]
+
+    PROMPT_INJECTION_PATTERNS = [
+        r"\bignore\s+(all|previous)\s+instructions?\b",
+        r"\breveal\s+your\s+system\s+prompt\b",
+        r"\bsystem\s*:",
+        r"\bsystem\s+override\b",
+        r"#+\s*system\s+override\s*#+",
+        r"\byou\s+are\s+now\s+in\s+admin\s+mode\b",
+        r"забудь\s+все\s+предыдущие\s+инструкции",
     ]
 
     def validate_query(self, query: str) -> ValidationResult:
@@ -79,6 +91,12 @@ class InputValidator:
         for pattern in self.SCRIPT_PATTERNS:
             if re.search(pattern, query, re.IGNORECASE):
                 errors.append("Query contains potentially dangerous script patterns")
+                break
+
+        # Check for prompt-injection attempts
+        for pattern in self.PROMPT_INJECTION_PATTERNS:
+            if re.search(pattern, query, re.IGNORECASE):
+                warnings.append("Query may contain prompt-injection attempt")
                 break
 
         # Sanitize

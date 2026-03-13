@@ -3,7 +3,7 @@
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from src.core import get_logger
@@ -60,6 +60,22 @@ class AgentPerformance:
             self.successes += 1
         else:
             self.failures += 1
+
+
+@dataclass
+class LegacyAgentPerformance:
+    """Legacy performance structure keyed by (task_type, agent_type)."""
+
+    successes: float = 0.0
+    failures: float = 0.0
+    total_reward: float = 0.0
+    total_time_ms: float = 0.0
+    trials: int = 0
+
+    def sample(self) -> float:
+        alpha = self.successes + 1.0
+        beta = self.failures + 1.0
+        return random.betavariate(alpha, beta)
 
 
 class ThompsonSamplingRouter:
@@ -234,6 +250,172 @@ class ThompsonSamplingRouter:
         )
         
         return best_id
+
+    def get_agent_stats(self, agent_id: UUID, task_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Backward-compatible accessor used by legacy orchestration tests.
+
+        Args:
+            agent_id: Agent identifier
+            task_type: Optional task-type hint (currently informational)
+
+        Returns:
+            Agent performance stats, or None if the agent is unknown
+        """
+        perf = self.performance.get(agent_id)
+        if not perf:
+            return None
+
+        return {
+            "agent_id": str(agent_id),
+            "agent_type": perf.agent_type.value,
+            "task_type": task_type,
+            "success_rate": perf.success_rate,
+            "total_tasks": perf.total_tasks,
+            "successes": perf.successes,
+            "failures": perf.failures,
+        }
+
+
+class ThompsonRouter:
+    """
+    Backward-compatible async Thompson router used by legacy unit tests.
+
+    This router operates on string `agent_type` identifiers and keeps
+    per-task-type Beta distributions.
+    """
+
+    def __init__(self, exploration_weight: float = 0.05) -> None:
+        self.exploration_weight = exploration_weight
+        self.exploration_bonus = exploration_weight
+        self._performance: Dict[str, Dict[str, LegacyAgentPerformance]] = {}
+        self._agent_values: Dict[str, Any] = {}
+        self._agent_types: Dict[str, str] = {}
+
+    @staticmethod
+    def _to_key(agent_identifier: Any) -> str:
+        return str(agent_identifier)
+
+    def register_agent(self, agent_id: Any, agent_type: Any) -> None:
+        """Register an agent for selection when `available_agents` is omitted."""
+        key = self._to_key(agent_id)
+        self._agent_values[key] = agent_id
+        self._agent_types[key] = str(getattr(agent_type, "value", agent_type))
+
+    async def select_agent(
+        self,
+        task_type: str,
+        available_agents: Optional[List[Any]] = None,
+    ) -> Optional[Any]:
+        if available_agents is None:
+            available_agents = list(self._agent_values.values())
+        if not available_agents:
+            return None
+        if len(available_agents) == 1:
+            return available_agents[0]
+
+        task_stats = self._performance.setdefault(task_type, {})
+        best_agent_key: Optional[str] = None
+        best_score = float("-inf")
+        agent_lookup: Dict[str, Any] = {}
+
+        for agent_identifier in available_agents:
+            agent_key = self._to_key(agent_identifier)
+            agent_lookup[agent_key] = agent_identifier
+            stats = task_stats.setdefault(agent_key, LegacyAgentPerformance())
+            sample = stats.sample()
+            if stats.trials < 3:
+                sample += self.exploration_bonus
+            if sample > best_score:
+                best_score = sample
+                best_agent_key = agent_key
+
+        if best_agent_key is None:
+            return None
+        return agent_lookup.get(best_agent_key)
+
+    async def update_performance(
+        self,
+        agent_id: Any = None,
+        task_type: str = "general",
+        success: bool = False,
+        execution_time_ms: Optional[float] = None,
+        reward: Optional[float] = None,
+        agent_type: Optional[str] = None,
+    ) -> None:
+        if agent_id is None and agent_type is None:
+            return
+
+        if agent_type is not None and agent_id is None:
+            agent_id = agent_type
+
+        agent_key = self._to_key(agent_id)
+        task_stats = self._performance.setdefault(task_type, {})
+        stats = task_stats.setdefault(agent_key, LegacyAgentPerformance())
+
+        stats.trials += 1
+        if reward is None:
+            if execution_time_ms is not None:
+                reward = max(0.0, 1.0 - (float(execution_time_ms) / 5000.0))
+            else:
+                reward = 1.0 if success else 0.0
+        stats.total_reward += float(reward)
+        if execution_time_ms is not None:
+            stats.total_time_ms += float(execution_time_ms)
+
+        if success:
+            stats.successes += 1.0
+        else:
+            stats.failures += 1.0
+
+    def get_agent_stats(self, agent_id: Any, task_type: str) -> Optional[Dict[str, float]]:
+        task_stats = self._performance.get(task_type, {})
+        stats = task_stats.get(self._to_key(agent_id))
+        if stats is None:
+            return None
+
+        return {
+            "successes": stats.successes,
+            "failures": stats.failures,
+            "trials": float(stats.trials),
+            "avg_time_ms": (stats.total_time_ms / stats.trials) if stats.trials else 0.0,
+            "avg_reward": (stats.total_reward / stats.trials) if stats.trials else 0.0,
+        }
+
+    def get_leaderboard(self, task_type: str) -> List[Dict[str, Any]]:
+        task_stats = self._performance.get(task_type, {})
+        rows: List[Dict[str, Any]] = []
+        for agent_key, stats in task_stats.items():
+            total = stats.successes + stats.failures
+            success_rate = (stats.successes / total) if total > 0 else 0.0
+            rows.append(
+                {
+                    "agent_id": self._agent_values.get(agent_key, agent_key),
+                    "success_rate": success_rate,
+                    "avg_time_ms": (stats.total_time_ms / stats.trials) if stats.trials else 0.0,
+                    "trials": stats.trials,
+                }
+            )
+        rows.sort(key=lambda row: (-row["success_rate"], row["avg_time_ms"]))
+        return rows
+
+    def get_statistics(self) -> Dict[str, Dict[str, Dict[str, float]]]:
+        snapshot: Dict[str, Dict[str, Dict[str, float]]] = {}
+        for task_type, agents in self._performance.items():
+            snapshot[task_type] = {}
+            for agent_key, stats in agents.items():
+                total = stats.successes + stats.failures
+                success_rate = (stats.successes / total) if total > 0 else 0.0
+                snapshot[task_type][agent_key] = {
+                    "successes": stats.successes,
+                    "failures": stats.failures,
+                    "trials": float(stats.trials),
+                    "success_rate": success_rate,
+                    "total_reward": stats.total_reward,
+                    "total_time_ms": stats.total_time_ms,
+                    "avg_reward": (stats.total_reward / stats.trials) if stats.trials else 0.0,
+                }
+        return snapshot
 
 
 # Singleton instance

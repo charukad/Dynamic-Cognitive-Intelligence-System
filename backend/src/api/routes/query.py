@@ -1,6 +1,6 @@
 """Query and orchestration API endpoints."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query as QueryParam, status
 from fastapi.responses import StreamingResponse
@@ -26,6 +26,7 @@ class QueryResponse(BaseModel):
     task_id: str
     description: str
     status: str
+    response: Any = None
     result: dict
 
 
@@ -49,11 +50,24 @@ async def process_query(request: QueryRequest) -> QueryResponse:
             session_id=request.session_id,
             task_type=request.task_type,
         )
-        
+
+        response_payload: Any = result.get("response")
+        if response_payload is None:
+            nested_result = result.get("result")
+            if isinstance(nested_result, dict):
+                response_payload = (
+                    nested_result.get("response")
+                    or nested_result.get("content")
+                    or nested_result
+                )
+            elif nested_result is not None:
+                response_payload = nested_result
+
         return QueryResponse(
             task_id=result.get("task_id", "unknown"),
             description=request.query,
             status=result.get("status", "completed"),
+            response=response_payload,
             result=result,
         )
         
@@ -128,7 +142,12 @@ async def get_task_status(task_id: str) -> dict:
                 detail=status_info["error"],
             )
         
-        return status_info
+        task_summary = status_info.get("task", {})
+        return {
+            "task_id": task_id,
+            "status": task_summary.get("status", "unknown"),
+            **status_info,
+        }
         
     except ValueError:
         raise HTTPException(
